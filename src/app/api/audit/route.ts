@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   const origin = request.headers.get("origin");
 
   // 1. Define allowed Localhost ports for testing
-  const allowedOrigins = ["http://localhost:3000", "http://localhost:3005"];
+  const allowedOrigins = ["http://localhost:3000", "http://localhost:3005", "https://seo-auditor-ibg8.vercel.app/"];
 
   // 2. Logic: Allow if it is Localhost OR if it is ANY Vercel app
   const isVercel = origin && origin.includes(".vercel.app");
