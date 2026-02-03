@@ -1,0 +1,165 @@
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2026-02-03T11:29:18.724Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-02-03T11:29:18.726Z] > authorizing via signed-in user (walter@theviablesource.com)
+[debug] [2026-02-03T11:29:18.728Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.728Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.728Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-02-03T11:29:18.729Z] > authorizing via signed-in user (walter@theviablesource.com)
+[debug] [2026-02-03T11:29:18.729Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.730Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.732Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo [none]
+[debug] [2026-02-03T11:29:18.735Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo [none]
+[debug] [2026-02-03T11:29:18.956Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo 200
+[debug] [2026-02-03T11:29:18.957Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo {"name":"projects/seo-auditor-8232b/billingInfo","projectId":"seo-auditor-8232b","billingAccountName":"","billingEnabled":false}
+[debug] [2026-02-03T11:29:18.970Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.973Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.974Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.975Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.976Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.976Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.978Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.978Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.978Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.978Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.979Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.979Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.980Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:18.980Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.012Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.012Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.013Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.014Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.014Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firestore.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.014Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firestore.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.018Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/storage.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.018Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/storage.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.021Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebasedataconnect.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.022Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebasedataconnect.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.024Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/identitytoolkit.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.024Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/identitytoolkit.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.026Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/fcm.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.027Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/fcm.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.029Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/cloudfunctions.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.029Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/cloudfunctions.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.031Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseremoteconfig.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.032Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseremoteconfig.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.033Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseapphosting.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.034Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseapphosting.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.036Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseio.com [none]
+[debug] [2026-02-03T11:29:19.036Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseio.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.149Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo 200
+[debug] [2026-02-03T11:29:19.149Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo {"name":"projects/seo-auditor-8232b/billingInfo","projectId":"seo-auditor-8232b","billingAccountName":"","billingEnabled":false}
+[debug] [2026-02-03T11:29:19.152Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.152Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.153Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.156Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.157Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.157Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.157Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.157Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.158Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.158Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.158Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.162Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.165Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.165Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.178Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.179Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.179Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.180Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:19.180Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firestore.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.180Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firestore.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.183Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/storage.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.183Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/storage.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.186Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebasedataconnect.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.186Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebasedataconnect.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.189Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/identitytoolkit.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.189Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/identitytoolkit.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.191Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/fcm.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.192Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/fcm.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.193Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/cloudfunctions.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.193Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/cloudfunctions.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.195Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseremoteconfig.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.195Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseremoteconfig.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.197Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseapphosting.googleapis.com [none]
+[debug] [2026-02-03T11:29:19.197Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseapphosting.googleapis.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.198Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseio.com [none]
+[debug] [2026-02-03T11:29:19.199Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseio.com  x-goog-user-project=seo-auditor-8232b
+[debug] [2026-02-03T11:29:19.461Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseio.com 403
+[debug] [2026-02-03T11:29:19.462Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseio.com [omitted]
+[debug] [2026-02-03T11:29:19.744Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseio.com 403
+[debug] [2026-02-03T11:29:19.744Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseio.com [omitted]
+[debug] [2026-02-03T11:29:19.827Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/cloudfunctions.googleapis.com 200
+[debug] [2026-02-03T11:29:19.827Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/cloudfunctions.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:19.860Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/fcm.googleapis.com 200
+[debug] [2026-02-03T11:29:19.860Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/fcm.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:19.873Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebasedataconnect.googleapis.com 200
+[debug] [2026-02-03T11:29:19.873Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:19.891Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/identitytoolkit.googleapis.com 200
+[debug] [2026-02-03T11:29:19.891Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/identitytoolkit.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:19.904Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/storage.googleapis.com 200
+[debug] [2026-02-03T11:29:19.910Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/storage.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:19.926Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseremoteconfig.googleapis.com 200
+[debug] [2026-02-03T11:29:19.926Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseremoteconfig.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:19.949Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/identitytoolkit.googleapis.com 200
+[debug] [2026-02-03T11:29:19.951Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/identitytoolkit.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:19.999Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/fcm.googleapis.com 200
+[debug] [2026-02-03T11:29:20.000Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/fcm.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:20.014Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firestore.googleapis.com 200
+[debug] [2026-02-03T11:29:20.017Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firestore.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:20.035Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseapphosting.googleapis.com 200
+[debug] [2026-02-03T11:29:20.035Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:20.041Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/cloudfunctions.googleapis.com 200
+[debug] [2026-02-03T11:29:20.041Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/cloudfunctions.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:20.060Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firestore.googleapis.com 200
+[debug] [2026-02-03T11:29:20.061Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firestore.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:20.065Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseapphosting.googleapis.com 200
+[debug] [2026-02-03T11:29:20.065Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:20.066Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebasedataconnect.googleapis.com 200
+[debug] [2026-02-03T11:29:20.066Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:20.069Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseremoteconfig.googleapis.com 200
+[debug] [2026-02-03T11:29:20.070Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/firebaseremoteconfig.googleapis.com [omitted]
+[debug] [2026-02-03T11:29:20.082Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/storage.googleapis.com 200
+[debug] [2026-02-03T11:29:20.082Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/seo-auditor-8232b/services/storage.googleapis.com [omitted]
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2026-02-03T11:29:20.127Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-02-03T11:29:20.128Z] > authorizing via signed-in user (walter@theviablesource.com)
+[debug] [2026-02-03T11:29:20.128Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:20.128Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:20.128Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo [none]
+[debug] [2026-02-03T11:29:20.763Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo 200
+[debug] [2026-02-03T11:29:20.764Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo {"name":"projects/seo-auditor-8232b/billingInfo","projectId":"seo-auditor-8232b","billingAccountName":"","billingEnabled":false}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2026-02-03T11:29:20.767Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-02-03T11:29:20.768Z] > authorizing via signed-in user (walter@theviablesource.com)
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2026-02-03T11:29:20.842Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-02-03T11:29:20.843Z] > authorizing via signed-in user (walter@theviablesource.com)
+[debug] [2026-02-03T11:29:20.843Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:20.843Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:20.843Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo [none]
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2026-02-03T11:29:20.966Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-02-03T11:29:20.968Z] > authorizing via signed-in user (walter@theviablesource.com)
+[debug] [2026-02-03T11:29:20.970Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:20.970Z] Checked if tokens are valid: true, expires at: 1770119418097
+[debug] [2026-02-03T11:29:20.970Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo [none]
+[debug] [2026-02-03T11:29:21.314Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo 200
+[debug] [2026-02-03T11:29:21.314Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo {"name":"projects/seo-auditor-8232b/billingInfo","projectId":"seo-auditor-8232b","billingAccountName":"","billingEnabled":false}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2026-02-03T11:29:21.321Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-02-03T11:29:21.321Z] > authorizing via signed-in user (walter@theviablesource.com)
+[debug] [2026-02-03T11:29:21.471Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo 200
+[debug] [2026-02-03T11:29:21.471Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/seo-auditor-8232b/billingInfo {"name":"projects/seo-auditor-8232b/billingInfo","projectId":"seo-auditor-8232b","billingAccountName":"","billingEnabled":false}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2026-02-03T11:29:21.476Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-02-03T11:29:21.478Z] > authorizing via signed-in user (walter@theviablesource.com)
