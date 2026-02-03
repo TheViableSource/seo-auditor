@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 // Import your new Sidebar component
 import { Sidebar } from "@/components/Sidebar";
 
@@ -36,6 +37,7 @@ export default function RootLayout({
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>
+        <Analytics />
       </body>
     </html>
   );
