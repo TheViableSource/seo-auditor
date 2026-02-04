@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { Info, Smartphone, Monitor } from "lucide-react"
+import { SERP } from "@/lib/constants"
 
 export default function SerpSimulator() {
   // Default values
@@ -13,10 +14,6 @@ export default function SerpSimulator() {
   const [desc, setDesc] = useState("This is an example of a meta description. Google usually cuts this off around 155-160 characters, so make sure your key point is early.")
   const [url, setUrl] = useState("www.example.com/category/page-name")
   const [isMobile, setIsMobile] = useState(false)
-
-  // SEO Limits (Google Standard)
-  const TITLE_MAX = 60
-  const DESC_MAX = 160
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
@@ -27,7 +24,7 @@ export default function SerpSimulator() {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        
+
         {/* LEFT COLUMN: The Inputs */}
         <Card className="h-fit">
           <CardHeader>
@@ -35,46 +32,46 @@ export default function SerpSimulator() {
             <CardDescription>Optimize your snippet to increase Click-Through Rate (CTR).</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            
+
             {/* Title Input */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <label className="font-medium">SEO Title</label>
-                <span className={title.length > TITLE_MAX ? "text-red-500 font-bold" : "text-zinc-500"}>
-                  {title.length} / {TITLE_MAX} chars
+                <span className={title.length > SERP.TITLE_MAX_LENGTH ? "text-red-500 font-bold" : "text-zinc-500"}>
+                  {title.length} / {SERP.TITLE_MAX_LENGTH} chars
                 </span>
               </div>
-              <Input 
-                value={title} 
-                onChange={(e) => setTitle(e.target.value)} 
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder="Enter page title..."
               />
-              <Progress value={(title.length / TITLE_MAX) * 100} className="h-1" />
+              <Progress value={(title.length / SERP.TITLE_MAX_LENGTH) * 100} className="h-1" />
             </div>
 
             {/* Description Input */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <label className="font-medium">Meta Description</label>
-                <span className={desc.length > DESC_MAX ? "text-red-500 font-bold" : "text-zinc-500"}>
-                  {desc.length} / {DESC_MAX} chars
+                <span className={desc.length > SERP.DESCRIPTION_MAX_LENGTH ? "text-red-500 font-bold" : "text-zinc-500"}>
+                  {desc.length} / {SERP.DESCRIPTION_MAX_LENGTH} chars
                 </span>
               </div>
-              <Textarea 
-                value={desc} 
-                onChange={(e) => setDesc(e.target.value)} 
+              <Textarea
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
                 placeholder="Enter meta description..."
                 className="h-24"
               />
-              <Progress value={(desc.length / DESC_MAX) * 100} className="h-1" />
+              <Progress value={(desc.length / SERP.DESCRIPTION_MAX_LENGTH) * 100} className="h-1" />
             </div>
 
             {/* URL Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Display URL</label>
-              <Input 
-                value={url} 
-                onChange={(e) => setUrl(e.target.value)} 
+              <Input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
                 placeholder="example.com/page"
               />
             </div>
@@ -85,16 +82,16 @@ export default function SerpSimulator() {
 
         {/* RIGHT COLUMN: The Google Preview */}
         <div className="space-y-4">
-          
+
           {/* Device Toggles */}
           <div className="flex gap-2 p-1 bg-zinc-100 w-fit rounded-lg">
-            <button 
+            <button
               onClick={() => setIsMobile(false)}
               className={`p-2 rounded-md text-sm font-medium flex items-center gap-2 transition-all ${!isMobile ? "bg-white shadow-sm text-black" : "text-zinc-500"}`}
             >
               <Monitor className="w-4 h-4" /> Desktop
             </button>
-            <button 
+            <button
               onClick={() => setIsMobile(true)}
               className={`p-2 rounded-md text-sm font-medium flex items-center gap-2 transition-all ${isMobile ? "bg-white shadow-sm text-black" : "text-zinc-500"}`}
             >
@@ -111,10 +108,10 @@ export default function SerpSimulator() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 bg-white min-h-[200px]">
-              
+
               {/* This mimics the Google Search Result Structure */}
               <div className="max-w-[600px] font-sans">
-                
+
                 {/* 1. Breadcrumb / URL Line */}
                 <div className="flex items-center gap-3 mb-1 group cursor-pointer">
                   <div className="w-7 h-7 bg-zinc-100 rounded-full flex items-center justify-center text-[10px] text-zinc-500 border border-zinc-200">
@@ -145,8 +142,8 @@ export default function SerpSimulator() {
 
           {/* SEO Pro Tip Box */}
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
-             <span className="font-bold">Pro Tip:</span> 
-             {title.length > 60 
+             <span className="font-bold">Pro Tip:</span>
+             {title.length > SERP.TITLE_MAX_LENGTH
                ? " Your title is too long! Google will likely rewrite it or truncate it with '...'"
                : " Keep your main keyword near the front of the title for better impact."}
           </div>

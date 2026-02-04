@@ -3,23 +3,25 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-  Loader2, 
-  AlertTriangle, 
-  CheckCircle, 
-  ArrowRight, 
-  Flag, 
-  FileText, 
-  LinkIcon, 
-  ImageIcon, 
+import {
+  Loader2,
+  AlertTriangle,
+  CheckCircle,
+  ArrowRight,
+  Flag,
+  FileText,
+  LinkIcon,
+  ImageIcon,
   LayoutTemplate,
-  Smartphone 
+  Smartphone
 } from "lucide-react"
+import type { AuditResult } from "@/lib/types"
+import { sanitizeImageUrl } from "@/lib/utils"
 
 export default function Home() {
   const [url, setUrl] = useState("")
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<null | any>(null)
+  const [result, setResult] = useState<AuditResult | null>(null)
   const [error, setError] = useState("")
 
   const runAudit = async () => {
@@ -34,23 +36,30 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url })
       })
-      
+
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || "Audit failed")
       setResult(data)
-    } catch (err) {
+    } catch {
       setError("Failed to audit this site. Please check the URL and try again.")
     } finally {
       setLoading(false)
     }
   }
 
-  // Helper to fake a "Priority" level based on the error type
   const getPriority = (issue: string) => {
     if (issue.includes("Missing")) return { label: "High", color: "text-red-600 bg-red-50 border-red-100" }
     if (issue.includes("too long") || issue.includes("Thin")) return { label: "Medium", color: "text-orange-600 bg-orange-50 border-orange-100" }
     return { label: "Low", color: "text-blue-600 bg-blue-50 border-blue-100" }
   }
+
+  // Compute sanitized image URLs when result is available
+  const ogImageUrl = result?.details.social.ogImage
+    ? sanitizeImageUrl(result.details.social.ogImage, url)
+    : null
+  const faviconUrl = result?.details.mobile.icon
+    ? sanitizeImageUrl(result.details.mobile.icon, url)
+    : null
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8 bg-zinc-50 min-h-screen">
@@ -62,11 +71,11 @@ export default function Home() {
 
       {/* Input Box */}
       <div className="flex gap-4 items-start p-6 bg-white rounded-xl shadow-sm border border-zinc-200">
-        <input 
-          type="text" 
+        <input
+          type="text"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://example.com" 
+          placeholder="https://example.com"
           className="flex-1 px-4 py-3 border border-zinc-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none transition-all"
         />
         <Button onClick={runAudit} disabled={loading} size="lg" className="h-[50px] bg-orange-500 hover:bg-orange-600 text-white">
@@ -84,7 +93,7 @@ export default function Home() {
 
       {result && (
         <div className="space-y-10">
-          
+
           {/* 1. TOP METRICS ROW (Score & External Integrations) */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="shadow-sm border-zinc-200">
@@ -122,13 +131,13 @@ export default function Home() {
               <ArrowRight className="h-5 w-5 text-orange-500" />
               Top SEO Opportunities
             </h3>
-            
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {result.details.issues.length === 0 ? (
                 <div className="col-span-full p-8 bg-green-50 text-green-700 rounded-xl border border-green-100 flex flex-col items-center justify-center text-center">
                   <CheckCircle className="h-12 w-12 mb-4 text-green-500" />
                   <h4 className="text-lg font-bold">Excellent Work!</h4>
-                  <p>We couldn't find any critical on-page errors.</p>
+                  <p>We couldn&apos;t find any critical on-page errors.</p>
                 </div>
               ) : (
                 result.details.issues.map((issue: string, i: number) => {
@@ -162,9 +171,9 @@ export default function Home() {
               <ArrowRight className="h-5 w-5 text-blue-500" />
               Deep Dive Analysis
             </h3>
-            
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                
+
                 {/* Card A: Content Health */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -255,7 +264,7 @@ export default function Home() {
 
           {/* 4. SOCIAL & BRANDING SECTION */}
           <div className="grid gap-6 md:grid-cols-2">
-            
+
             {/* Social Preview Card */}
             <Card className="overflow-hidden">
               <CardHeader>
@@ -265,10 +274,10 @@ export default function Home() {
                 <div className="border border-zinc-200 rounded-lg overflow-hidden max-w-sm mx-auto shadow-sm">
                   {/* The Image Area */}
                   <div className="h-48 bg-zinc-100 flex items-center justify-center overflow-hidden relative">
-                    {result.details.social.ogImage ? (
-                      <img 
-                        src={result.details.social.ogImage.startsWith("http") ? result.details.social.ogImage : url + result.details.social.ogImage} 
-                        alt="Social Preview" 
+                    {ogImageUrl ? (
+                      <img
+                        src={ogImageUrl}
+                        alt="Social Preview"
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -278,7 +287,7 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* The Text Area */}
                   <div className="p-4 bg-zinc-50 border-t">
                     <div className="text-xs text-zinc-500 uppercase mb-1">{new URL(url).hostname}</div>
@@ -299,7 +308,7 @@ export default function Home() {
                  <CardTitle className="text-sm font-medium text-zinc-500">Technical Presence</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                
+
                 {/* Mobile Check */}
                 <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg">
                   <div className="flex items-center gap-3">
@@ -318,8 +327,8 @@ export default function Home() {
                 <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg">
                   <div className="flex items-center gap-3">
                      <div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center overflow-hidden">
-                        {result.details.mobile.icon ? (
-                          <img src={result.details.mobile.icon.startsWith("http") ? result.details.mobile.icon : url + result.details.mobile.icon} className="w-4 h-4" />
+                        {faviconUrl ? (
+                          <img src={faviconUrl} alt="Favicon" className="w-4 h-4" />
                         ) : (
                           <div className="w-2 h-2 bg-red-400 rounded-full" />
                         )}
