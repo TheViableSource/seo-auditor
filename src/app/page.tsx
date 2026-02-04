@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import type { AuditResult } from "@/lib/types"
 import { sanitizeImageUrl } from "@/lib/utils"
+import { AuditResultsSkeleton } from "@/components/AuditResultsSkeleton"
 
 export default function Home() {
   const [url, setUrl] = useState("")
@@ -62,80 +63,84 @@ export default function Home() {
     : null
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8 bg-zinc-50 min-h-screen">
+    <div className="p-8 max-w-6xl mx-auto space-y-8 bg-background min-h-screen">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold tracking-tight text-zinc-900">SEO Auditor</h2>
-        <p className="text-zinc-500">Enter a URL to generate your optimization checklist.</p>
+        <h2 className="text-3xl font-bold tracking-tight text-foreground">SEO Auditor</h2>
+        <p className="text-muted-foreground">Enter a URL to generate your optimization checklist.</p>
       </div>
 
       {/* Input Box */}
-      <div className="flex gap-4 items-start p-6 bg-white rounded-xl shadow-sm border border-zinc-200">
+      <div className="flex gap-4 items-start p-6 bg-card rounded-xl shadow-sm border border-border">
         <input
           type="text"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://example.com"
-          className="flex-1 px-4 py-3 border border-zinc-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+          aria-label="URL to audit"
+          className="flex-1 px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none transition-all bg-background text-foreground"
         />
         <Button onClick={runAudit} disabled={loading} size="lg" className="h-[50px] bg-orange-500 hover:bg-orange-600 text-white">
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
           {loading ? "Analyzing..." : "Audit Site"}
         </Button>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 text-red-600 rounded-lg flex items-center gap-2 border border-red-100">
-          <AlertTriangle className="h-5 w-5" />
+        <div className="p-4 bg-red-50 text-red-600 rounded-lg flex items-center gap-2 border border-red-100" role="alert">
+          <AlertTriangle className="h-5 w-5" aria-hidden="true" />
           {error}
         </div>
       )}
 
-      {result && (
+      {/* Skeleton loading state */}
+      {loading && <AuditResultsSkeleton />}
+
+      {result && !loading && (
         <div className="space-y-10">
 
-          {/* 1. TOP METRICS ROW (Score & External Integrations) */}
+          {/* 1. TOP METRICS ROW */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="shadow-sm border-zinc-200">
               <CardContent className="p-6">
-                <div className="text-sm text-zinc-500 font-medium uppercase tracking-wider">On-Page Score</div>
-                <div className="mt-2 text-4xl font-bold text-zinc-900">{result.score}<span className="text-xl text-zinc-400">/100</span></div>
+                <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">On-Page Score</div>
+                <div className="mt-2 text-4xl font-bold text-foreground">{result.score}<span className="text-xl text-muted-foreground">/100</span></div>
               </CardContent>
             </Card>
             <Card className="shadow-sm border-zinc-200">
               <CardContent className="p-6">
-                <div className="text-sm text-zinc-500 font-medium uppercase tracking-wider">Organic Traffic</div>
-                <div className="mt-2 text-2xl font-bold text-zinc-400">--</div>
+                <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Organic Traffic</div>
+                <div className="mt-2 text-2xl font-bold text-muted-foreground/50">--</div>
                 <div className="text-xs text-orange-500 mt-1 cursor-pointer hover:underline">Connect Google Analytics</div>
               </CardContent>
             </Card>
             <Card className="shadow-sm border-zinc-200">
               <CardContent className="p-6">
-                <div className="text-sm text-zinc-500 font-medium uppercase tracking-wider">Keywords</div>
-                <div className="mt-2 text-2xl font-bold text-zinc-400">--</div>
+                <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Keywords</div>
+                <div className="mt-2 text-2xl font-bold text-muted-foreground/50">--</div>
                 <div className="text-xs text-orange-500 mt-1 cursor-pointer hover:underline">Connect Search Console</div>
               </CardContent>
             </Card>
             <Card className="shadow-sm border-zinc-200">
               <CardContent className="p-6">
-                <div className="text-sm text-zinc-500 font-medium uppercase tracking-wider">Backlinks</div>
-                <div className="mt-2 text-2xl font-bold text-zinc-400">--</div>
+                <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Backlinks</div>
+                <div className="mt-2 text-2xl font-bold text-muted-foreground/50">--</div>
                 <div className="text-xs text-orange-500 mt-1 cursor-pointer hover:underline">Connect Majestic/Moz</div>
               </CardContent>
             </Card>
           </div>
 
-          {/* 2. SEO OPPORTUNITIES SECTION (The Issues List) */}
+          {/* 2. SEO OPPORTUNITIES SECTION */}
           <div>
-            <h3 className="text-xl font-bold text-zinc-900 flex items-center gap-2 mb-4">
-              <ArrowRight className="h-5 w-5 text-orange-500" />
+            <h3 className="text-xl font-bold text-foreground flex items-center gap-2 mb-4">
+              <ArrowRight className="h-5 w-5 text-orange-500" aria-hidden="true" />
               Top SEO Opportunities
             </h3>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {result.details.issues.length === 0 ? (
                 <div className="col-span-full p-8 bg-green-50 text-green-700 rounded-xl border border-green-100 flex flex-col items-center justify-center text-center">
-                  <CheckCircle className="h-12 w-12 mb-4 text-green-500" />
+                  <CheckCircle className="h-12 w-12 mb-4 text-green-500" aria-hidden="true" />
                   <h4 className="text-lg font-bold">Excellent Work!</h4>
                   <p>We couldn&apos;t find any critical on-page errors.</p>
                 </div>
@@ -147,10 +152,10 @@ export default function Home() {
                       <CardContent className="p-6 flex flex-col justify-between h-full space-y-4">
                         <div className="space-y-3">
                           <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border ${priority.color}`}>
-                            <Flag className="h-3 w-3" />
+                            <Flag className="h-3 w-3" aria-hidden="true" />
                             Priority: {priority.label}
                           </div>
-                          <p className="font-medium text-zinc-800 leading-snug">
+                          <p className="font-medium text-foreground leading-snug">
                             {issue}
                           </p>
                         </div>
@@ -167,8 +172,8 @@ export default function Home() {
 
           {/* 3. DEEP DIVE ANALYSIS */}
           <div>
-            <h3 className="text-xl font-bold text-zinc-900 flex items-center gap-2 mb-4">
-              <ArrowRight className="h-5 w-5 text-blue-500" />
+            <h3 className="text-xl font-bold text-foreground flex items-center gap-2 mb-4">
+              <ArrowRight className="h-5 w-5 text-blue-500" aria-hidden="true" />
               Deep Dive Analysis
             </h3>
 
@@ -177,8 +182,8 @@ export default function Home() {
                 {/* Card A: Content Health */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-zinc-500">Content Health</CardTitle>
-                    <FileText className="h-4 w-4 text-zinc-400" />
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Content Health</CardTitle>
+                    <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </CardHeader>
                   <CardContent>
                     <div className="flex justify-between items-end">
@@ -199,8 +204,8 @@ export default function Home() {
                 {/* Card B: Link Profile */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-zinc-500">Link Profile</CardTitle>
-                    <LinkIcon className="h-4 w-4 text-zinc-400" />
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Link Profile</CardTitle>
+                    <LinkIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </CardHeader>
                   <CardContent>
                     <div className="flex gap-4">
@@ -219,8 +224,8 @@ export default function Home() {
                 {/* Card C: Image Analysis */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-zinc-500">Image Analysis</CardTitle>
-                        <ImageIcon className="h-4 w-4 text-zinc-400" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Image Analysis</CardTitle>
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     </CardHeader>
                     <CardContent>
                         <div className="flex justify-between items-end">
@@ -241,19 +246,19 @@ export default function Home() {
                 {/* Card D: Metadata Preview */}
                 <Card className="md:col-span-3">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-zinc-500">Metadata Preview</CardTitle>
-                    <LayoutTemplate className="h-4 w-4 text-zinc-400" />
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Metadata Preview</CardTitle>
+                    <LayoutTemplate className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                        <span className="text-xs font-bold text-zinc-400 uppercase">Title Tag</span>
+                        <span className="text-xs font-bold text-muted-foreground uppercase">Title Tag</span>
                         <div className="font-medium text-lg truncate" title={result.details.title}>
                             {result.details.title}
                         </div>
                     </div>
                     <div>
-                        <span className="text-xs font-bold text-zinc-400 uppercase">Meta Description</span>
-                        <div className="text-zinc-600">
+                        <span className="text-xs font-bold text-muted-foreground uppercase">Meta Description</span>
+                        <div className="text-muted-foreground">
                             {result.details.description}
                         </div>
                     </div>
@@ -268,12 +273,12 @@ export default function Home() {
             {/* Social Preview Card */}
             <Card className="overflow-hidden">
               <CardHeader>
-                 <CardTitle className="text-sm font-medium text-zinc-500">Social Media Preview</CardTitle>
+                 <CardTitle className="text-sm font-medium text-muted-foreground">Social Media Preview</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="border border-zinc-200 rounded-lg overflow-hidden max-w-sm mx-auto shadow-sm">
+                <div className="border border-border rounded-lg overflow-hidden max-w-sm mx-auto shadow-sm">
                   {/* The Image Area */}
-                  <div className="h-48 bg-zinc-100 flex items-center justify-center overflow-hidden relative">
+                  <div className="h-48 bg-muted flex items-center justify-center overflow-hidden relative">
                     {ogImageUrl ? (
                       <img
                         src={ogImageUrl}
@@ -281,20 +286,20 @@ export default function Home() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="text-zinc-400 flex flex-col items-center gap-2">
-                        <ImageIcon className="h-8 w-8" />
+                      <div className="text-muted-foreground flex flex-col items-center gap-2">
+                        <ImageIcon className="h-8 w-8" aria-hidden="true" />
                         <span className="text-xs">No OG Image Found</span>
                       </div>
                     )}
                   </div>
 
                   {/* The Text Area */}
-                  <div className="p-4 bg-zinc-50 border-t">
-                    <div className="text-xs text-zinc-500 uppercase mb-1">{new URL(url).hostname}</div>
-                    <div className="font-bold text-zinc-900 leading-tight mb-1 line-clamp-2">
+                  <div className="p-4 bg-muted/50 border-t">
+                    <div className="text-xs text-muted-foreground uppercase mb-1">{new URL(url).hostname}</div>
+                    <div className="font-bold text-foreground leading-tight mb-1 line-clamp-2">
                       {result.details.social.ogTitle !== "Missing" ? result.details.social.ogTitle : result.details.title}
                     </div>
-                    <div className="text-xs text-zinc-600 line-clamp-1">
+                    <div className="text-xs text-muted-foreground line-clamp-1">
                       {result.details.description}
                     </div>
                   </div>
@@ -305,28 +310,31 @@ export default function Home() {
             {/* Mobile & Tech Checklist */}
             <Card>
                <CardHeader>
-                 <CardTitle className="text-sm font-medium text-zinc-500">Technical Presence</CardTitle>
+                 <CardTitle className="text-sm font-medium text-muted-foreground">Technical Presence</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
 
                 {/* Mobile Check */}
-                <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-full ${result.details.mobile.viewport === "Optimized" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}>
-                       <Smartphone className="h-4 w-4" />
+                       <Smartphone className="h-4 w-4" aria-hidden="true" />
                     </div>
                     <div>
                       <div className="font-medium text-sm">Mobile Viewport</div>
-                      <div className="text-xs text-zinc-500">{result.details.mobile.viewport === "Optimized" ? "Responsive Ready" : "Not Optimized"}</div>
+                      <div className="text-xs text-muted-foreground">{result.details.mobile.viewport === "Optimized" ? "Responsive Ready" : "Not Optimized"}</div>
                     </div>
                   </div>
-                  {result.details.mobile.viewport === "Optimized" ? <CheckCircle className="h-4 w-4 text-green-500" /> : <AlertTriangle className="h-4 w-4 text-red-500" />}
+                  {result.details.mobile.viewport === "Optimized"
+                    ? <CheckCircle className="h-4 w-4 text-green-500" aria-hidden="true" />
+                    : <AlertTriangle className="h-4 w-4 text-red-500" aria-hidden="true" />
+                  }
                 </div>
 
                 {/* Favicon Check */}
-                <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center overflow-hidden">
+                     <div className="w-8 h-8 rounded-full bg-card border flex items-center justify-center overflow-hidden">
                         {faviconUrl ? (
                           <img src={faviconUrl} alt="Favicon" className="w-4 h-4" />
                         ) : (
@@ -335,10 +343,13 @@ export default function Home() {
                      </div>
                     <div>
                       <div className="font-medium text-sm">Favicon Brand</div>
-                      <div className="text-xs text-zinc-500">{result.details.mobile.icon ? "Detected" : "Missing Branding"}</div>
+                      <div className="text-xs text-muted-foreground">{result.details.mobile.icon ? "Detected" : "Missing Branding"}</div>
                     </div>
                   </div>
-                  {result.details.mobile.icon ? <CheckCircle className="h-4 w-4 text-green-500" /> : <AlertTriangle className="h-4 w-4 text-red-500" />}
+                  {result.details.mobile.icon
+                    ? <CheckCircle className="h-4 w-4 text-green-500" aria-hidden="true" />
+                    : <AlertTriangle className="h-4 w-4 text-red-500" aria-hidden="true" />
+                  }
                 </div>
 
               </CardContent>
