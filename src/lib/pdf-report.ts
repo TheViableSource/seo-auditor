@@ -174,14 +174,14 @@ export async function generatePdfReport(
     pdf.setTextColor(17, 24, 39)
     const domainLines = wrapText(pdf, audit.domain, CW)
     pdf.text(domainLines, ML, y)
-    y += domainLines.length * 12
+    y += domainLines.length * 13
 
     pdf.setFontSize(12)
     pdf.setFont("helvetica", "normal")
     pdf.setTextColor(107, 114, 128)
     const urlLines = wrapText(pdf, audit.url, CW)
     pdf.text(urlLines, ML, y)
-    y += urlLines.length * 6 + 20
+    y += urlLines.length * 5.5 + 20
 
     // Score hero box
     const boxY = y
@@ -204,7 +204,9 @@ export async function generatePdfReport(
     pdf.setFontSize(10)
     pdf.setFont("helvetica", "normal")
     pdf.setTextColor(107, 114, 128)
-    pdf.text(`${audit.issuesCount} issue${audit.issuesCount !== 1 ? "s" : ""} across ${audit.categorySummary.length} categories`, labelX, boxY + 26)
+    const issueText = `${audit.issuesCount} issue${audit.issuesCount !== 1 ? "s" : ""} across ${audit.categorySummary.length} categories`
+    const issueLines = wrapText(pdf, issueText, CW - 60)
+    pdf.text(issueLines, labelX, boxY + 26)
 
     // Status badge
     const statusLabel = s >= 80 ? "Good" : s >= 60 ? "Needs Work" : s >= 40 ? "Poor" : "Critical"
@@ -262,11 +264,17 @@ export async function generatePdfReport(
         pdf.setLineWidth(0.2)
         pdf.roundedRect(cardX, cardY, colW, cardH, 2, 2, "FD")
 
-        // Category name
+        // Category name (truncate to fit card minus score width)
         pdf.setFontSize(10)
         pdf.setFont("helvetica", "bold")
         pdf.setTextColor(17, 24, 39)
-        pdf.text(cat.label, cardX + 5, cardY + 8)
+        const catLabelMaxW = colW - 30 // leave room for score number
+        let catLabel = cat.label
+        while (pdf.getTextWidth(catLabel) > catLabelMaxW && catLabel.length > 3) {
+            catLabel = catLabel.slice(0, -1)
+        }
+        if (catLabel !== cat.label) catLabel += "…"
+        pdf.text(catLabel, cardX + 5, cardY + 8)
 
         // Score
         const cs = safe(cat.score)
@@ -348,10 +356,25 @@ export async function generatePdfReport(
         y += 10
 
         for (const check of failedChecks) {
-            // Estimate height needed
+            // Measure wrapped text at their actual font sizes
+            pdf.setFontSize(10)
+            const titleLines = wrapText(pdf, check.title || "", CW - 45)
+            const titleLH = 4.5  // line height for 10pt
+
+            pdf.setFontSize(8)
             const descLines = wrapText(pdf, check.description || "", CW - 20)
-            const recLines = check.recommendation ? wrapText(pdf, `💡 ${check.recommendation}`, CW - 20) : []
-            const needed = 16 + descLines.length * 4 + (recLines.length > 0 ? recLines.length * 4 + 10 : 0)
+            const descLH = 3.5  // line height for 8pt
+
+            pdf.setFontSize(7.5)
+            const recLines = check.recommendation ? wrapText(pdf, `Recommendation: ${check.recommendation}`, CW - 24) : []
+            const recLH = 3.5   // line height for 7.5pt
+
+            // Calculate precise card height
+            const titleH = titleLines.length * titleLH
+            const descH = descLines.length * descLH
+            const recH = recLines.length > 0 ? recLines.length * recLH + 10 : 0
+            const needed = 10 + titleH + 4 + descH + recH + 6
+
             y = ensureSpace(pdf, y, needed)
 
             // Severity indicator bar
@@ -369,11 +392,10 @@ export async function generatePdfReport(
             pdf.setLineWidth(0.2)
             pdf.roundedRect(ML + 3, y, CW - 3, needed - 4, 2, 2, "S")
 
-            // Title
+            // Title (wrapped)
             pdf.setFontSize(10)
             pdf.setFont("helvetica", "bold")
             pdf.setTextColor(17, 24, 39)
-            const titleLines = wrapText(pdf, check.title, CW - 45)
             pdf.text(titleLines, ML + 8, y + 6)
 
             // Severity badge
@@ -384,20 +406,22 @@ export async function generatePdfReport(
             pdf.setTextColor(255, 255, 255)
             pdf.text((check.severity || "info").toUpperCase(), PW - MR - 12, y + 5.5, { align: "center" })
 
-            // Description
-            let iy = y + 6 + titleLines.length * 4 + 2
+            // Description (wrapped)
+            let iy = y + 6 + titleH + 3
             pdf.setFontSize(8)
             pdf.setFont("helvetica", "normal")
             pdf.setTextColor(107, 114, 128)
             pdf.text(descLines, ML + 8, iy)
-            iy += descLines.length * 3.5
+            iy += descH
 
-            // Recommendation
+            // Recommendation (wrapped)
             if (recLines.length > 0) {
-                iy += 3
+                iy += 4
+                const recBoxH = recLines.length * recLH + 6
                 pdf.setFillColor(240, 253, 244)
-                pdf.roundedRect(ML + 8, iy - 3, CW - 16, recLines.length * 3.5 + 6, 1.5, 1.5, "F")
+                pdf.roundedRect(ML + 8, iy - 3, CW - 16, recBoxH, 1.5, 1.5, "F")
                 pdf.setFontSize(7.5)
+                pdf.setFont("helvetica", "normal")
                 pdf.setTextColor(21, 128, 61)
                 pdf.text(recLines, ML + 11, iy + 1)
             }
