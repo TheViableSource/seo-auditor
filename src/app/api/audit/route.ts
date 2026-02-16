@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
-import { SECURITY, SCORING } from "@/lib/constants";
+import { SECURITY } from "@/lib/constants";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { analyzeOnPage, extractOnPageDetails } from "@/lib/audit/on-page";
+import { analyzeTechnical, extractTechnicalDetails } from "@/lib/audit/technical";
+import { analyzeAccessibility } from "@/lib/audit/accessibility";
+import { analyzeStructuredData } from "@/lib/audit/structured-data";
+import { analyzeRobotsSitemap } from "@/lib/audit/robots-sitemap";
+import { analyzeSecurityHeaders } from "@/lib/audit/security";
+import { analyzeAEO } from "@/lib/audit/aeo";
+import { analyzeGEO } from "@/lib/audit/geo";
+import { analyzeContent, extractPageResources, extractSocialPreview } from "@/lib/audit/content";
+import { scoreCategory, calculateOverallScore } from "@/lib/audit/scoring";
 
 export async function POST(request: Request) {
   // --- RATE LIMITING ---
@@ -17,7 +27,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // --- SECURITY LAYER 1: ORIGIN CHECK ---
+  // --- SECURITY: ORIGIN CHECK ---
   const origin = request.headers.get("origin");
   const isAllowed = origin && (SECURITY.ALLOWED_ORIGINS as readonly string[]).includes(origin);
 
@@ -28,7 +38,7 @@ export async function POST(request: Request) {
   try {
     const { url } = await request.json();
 
-    // --- SECURITY LAYER 2: SSRF PROTECTION ---
+    // --- SSRF PROTECTION ---
     if (SECURITY.SSRF_FORBIDDEN_PATTERNS.some((pattern) => url.includes(pattern))) {
       return NextResponse.json({ error: "Restricted URL" }, { status: 403 });
     }
@@ -37,142 +47,92 @@ export async function POST(request: Request) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), SECURITY.FETCH_TIMEOUT_MS);
 
+    const fetchStart = Date.now();
     let response: Response;
     try {
       response = await fetch(url, {
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
         signal: controller.signal,
+        redirect: "follow",
       });
     } finally {
       clearTimeout(timeoutId);
     }
+    const fetchTimeMs = Date.now() - fetchStart;
 
     if (!response.ok) throw new Error(`Failed to visit site. Status: ${response.status}`);
 
     const html = await response.text();
     const $ = cheerio.load(html);
-
-    // --- BASIC METADATA ---
-    const title = $("title").text() || "";
-    const description = $('meta[name="description"]').attr("content") || "";
-    const h1 = $("h1").first().text() || "";
-    const canonical = $('link[rel="canonical"]').attr("href") || null;
-
-    // --- SOCIAL & MOBILE METADATA ---
-    const ogTitle = $('meta[property="og:title"]').attr("content") || null;
-    const ogImage = $('meta[property="og:image"]').attr("content") || null;
-    const viewport = $('meta[name="viewport"]').attr("content") || null;
-    const icon =
-      $('link[rel="icon"]').attr("href") ||
-      $('link[rel="shortcut icon"]').attr("href") ||
-      null;
-
-    // --- DEEP DIVE ANALYSIS ---
-
-    // 1. Word Count
-    $("script, style, noscript").remove();
-    const bodyText = $("body").text().replace(/\s+/g, " ").trim();
-    const wordCount = bodyText.split(" ").length;
-
-    // 2. Link Analysis
-    const links = $("a");
-    let internalLinks = 0;
-    let externalLinks = 0;
-    const urlObj = new URL(url);
-    const domain = urlObj.hostname;
-
-    links.each((_i, el) => {
-      const href = $(el).attr("href");
-      if (href) {
-        if (href.startsWith("/") || href.includes(domain)) {
-          internalLinks++;
-        } else if (href.startsWith("http")) {
-          externalLinks++;
-        }
-      }
+    const httpStatus = response.status;
+    const responseHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
     });
 
-    // 3. Image Analysis
-    const images = $("img");
-    let missingAlt = 0;
-    images.each((_i, img) => {
-      const alt = $(img).attr("alt");
-      if (!alt || alt.trim() === "") missingAlt++;
-    });
+    // --- RUN ALL ANALYZERS (parallel where possible) ---
+    const [robotsSitemapChecks] = await Promise.all([
+      analyzeRobotsSitemap(url),
+    ]);
 
-    // --- SCORING LOGIC ---
-    let score: number = SCORING.MAX_SCORE;
-    const issues: string[] = [];
+    const onPageChecks = analyzeOnPage($, url);
+    const technicalChecks = analyzeTechnical($, url, httpStatus, responseHeaders, fetchTimeMs);
+    const accessibilityChecks = analyzeAccessibility($);
+    const structuredDataChecks = analyzeStructuredData($);
+    const securityChecks = analyzeSecurityHeaders(responseHeaders);
+    const aeoChecks = analyzeAEO($);
+    const geoChecks = analyzeGEO($, url);
 
-    if (!title) {
-      score -= SCORING.PENALTY_MISSING_TITLE;
-      issues.push("Missing Title Tag");
-    }
-    if (!description) {
-      score -= SCORING.PENALTY_MISSING_DESCRIPTION;
-      issues.push("Missing Meta Description");
-    }
-    if (!h1) {
-      score -= SCORING.PENALTY_MISSING_H1;
-      issues.push("Missing H1 Header");
-    }
+    // --- CONTENT ANALYSIS ---
+    const contentAnalysis = analyzeContent($, html);
+    const pageResources = extractPageResources($, html);
+    const socialPreview = extractSocialPreview($);
 
-    if (wordCount < SCORING.MIN_WORD_COUNT) {
-      score -= SCORING.PENALTY_THIN_CONTENT;
-      issues.push(
-        `Thin Content: Only ${wordCount} words (Recommended: ${SCORING.MIN_WORD_COUNT}+)`
-      );
-    }
+    // --- SCORE CATEGORIES ---
+    const categories = [
+      scoreCategory("on-page", "On-Page SEO", onPageChecks),
+      scoreCategory("technical", "Technical SEO", technicalChecks),
+      scoreCategory("accessibility", "Accessibility", accessibilityChecks),
+      scoreCategory("structured-data", "Structured Data", structuredDataChecks),
+      scoreCategory("security", "Security Headers", securityChecks),
+      scoreCategory("robots-sitemap", "Robots & Sitemap", robotsSitemapChecks),
+      scoreCategory("aeo", "Answer Engine (AEO)", aeoChecks),
+      scoreCategory("geo", "Generative Engine (GEO)", geoChecks),
+    ];
 
-    if (!canonical) {
-      score -= SCORING.PENALTY_MISSING_CANONICAL;
-      issues.push("Missing Canonical Tag (Risk of duplicate content)");
-    }
-    if (missingAlt > 0) {
-      score -= SCORING.PENALTY_MISSING_ALT;
-      issues.push(`${missingAlt} images missing Alt Text`);
-    }
+    const overallScore = calculateOverallScore(categories);
 
-    if (!viewport) {
-      score -= SCORING.PENALTY_MISSING_VIEWPORT;
-      issues.push("Not Mobile Friendly (Missing Viewport Tag)");
-    }
-    if (!ogImage) {
-      score -= SCORING.PENALTY_MISSING_OG_IMAGE;
-      issues.push("Missing Social Share Image (og:image)");
-    }
-    if (!icon) {
-      score -= SCORING.PENALTY_MISSING_FAVICON;
-      issues.push("Missing Favicon");
-    }
+    // --- EXTRACT LEGACY DETAILS (backward compat) ---
+    const onPageDetails = extractOnPageDetails($, url);
+    const technicalDetails = extractTechnicalDetails($);
 
-    score = Math.max(0, score);
+    // Collect issues from all failing checks
+    const issues = categories.flatMap((cat) =>
+      cat.checks
+        .filter((c) => c.status === "fail" || c.status === "warning")
+        .map((c) => c.title + (c.value ? `: ${c.value}` : ""))
+    );
 
-    // --- RETURN RESULTS ---
     return NextResponse.json({
-      score,
+      score: overallScore,
+      categories,
       details: {
-        title: title || "Missing",
-        description: description || "Missing",
-        h1: h1 || "Missing",
-        canonical: canonical || "Missing",
-        wordCount,
-        internalLinks,
-        externalLinks,
-        imageCount: images.length,
-        missingAlt,
-        social: {
-          ogTitle: ogTitle || "Missing",
-          ogImage: ogImage || null,
-        },
-        mobile: {
-          viewport: viewport ? "Optimized" : "Missing",
-          icon: icon || null,
-        },
+        ...onPageDetails,
+        social: technicalDetails.social,
+        mobile: technicalDetails.mobile,
         issues,
+      },
+      contentAnalysis,
+      pageResources,
+      socialPreview,
+      meta: {
+        url,
+        fetchTimeMs,
+        timestamp: new Date().toISOString(),
+        httpStatus,
       },
     });
   } catch (error: unknown) {

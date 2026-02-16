@@ -11,6 +11,11 @@ const authRoutes = ["/auth/login", "/auth/signup"];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // In development without a database, bypass auth to allow UI development
+  if (process.env.NODE_ENV !== "production" && !process.env.DATABASE_URL) {
+    return NextResponse.next();
+  }
+
   // Get the token from the request
   const token = await getToken({
     req: request,
