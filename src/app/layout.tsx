@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 import { Sidebar } from "@/components/Sidebar";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { WelcomeModal } from "@/components/WelcomeModal";

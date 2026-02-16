@@ -152,6 +152,26 @@ export async function POST(request: NextRequest) {
             // const apiKey = process.env.LOCAL_RANK_API_KEY
             // if (apiKey) { ... }
 
+            // Simulated competitor names pool
+            const COMPETITORS = [
+                { name: "Joe's Coffee", domain: "joescoffee.com" },
+                { name: "Brew Brothers", domain: "brewbros.co" },
+                { name: "Morning Grind", domain: "morninggrind.com" },
+                { name: "Daily Drip", domain: "dailydrip.cafe" },
+                { name: "Bean Counter", domain: "beancounter.com" },
+                { name: "Perk Up", domain: "perkupcafe.com" },
+                { name: "Roast House", domain: "roasthouse.co" },
+                { name: "The Coffee Spot", domain: "thecoffeespot.com" },
+                { name: "Grind & Brew", domain: "grindandbrew.com" },
+                { name: "Cup of Joy", domain: "cupofjoy.cafe" },
+                { name: "Espresso Lane", domain: "espressolane.com" },
+                { name: "Rise & Grind", domain: "riseandgrind.co" },
+            ]
+
+            // Extract client domain from URL for labeling
+            let clientDomain = "your-site.com"
+            try { clientDomain = new URL(url.startsWith("http") ? url : `https://${url}`).hostname } catch { /* ignore */ }
+
             // Simulated — deterministic hash-based
             const gridResults = points.map((pt) => {
                 const hash = (keyword + pt.lat.toFixed(3) + pt.lng.toFixed(3))
@@ -164,10 +184,32 @@ export async function POST(request: NextRequest) {
                 const baseRank = (absHash % 15) + 1
                 const adjustedRank = Math.min(baseRank + distancePenalty, 30)
                 const hasRank = absHash % 12 !== 0 // ~92% chance
+                const clientRank = hasRank ? adjustedRank : null
+
+                // Generate top 4 competitors at this location
+                const top4: { rank: number; name: string; domain: string; isClient: boolean }[] = []
+                const usedIndexes = new Set<number>()
+                for (let r = 1; r <= 4; r++) {
+                    if (clientRank === r) {
+                        top4.push({ rank: r, name: "You", domain: clientDomain, isClient: true })
+                    } else {
+                        // Pick a deterministic competitor
+                        const cHash = Math.abs((hash + r * 7919) % COMPETITORS.length)
+                        let idx = cHash
+                        while (usedIndexes.has(idx)) idx = (idx + 1) % COMPETITORS.length
+                        usedIndexes.add(idx)
+                        top4.push({ rank: r, name: COMPETITORS[idx].name, domain: COMPETITORS[idx].domain, isClient: false })
+                    }
+                }
+                // If client ranks outside top 4 but has a rank, add them as a 5th entry
+                if (clientRank && clientRank > 4) {
+                    top4.push({ rank: clientRank, name: "You", domain: clientDomain, isClient: true })
+                }
 
                 return {
                     ...pt,
-                    rank: hasRank ? adjustedRank : null,
+                    rank: clientRank,
+                    competitors: top4,
                 }
             })
 
