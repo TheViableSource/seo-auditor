@@ -1,5 +1,5 @@
 {
-  "name": "out",
+  "name": "seo-auditor",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -20,8 +20,8 @@
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
-    "@types/bcrypt": "^6.0.0",
-    "bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
