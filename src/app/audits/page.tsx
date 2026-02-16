@@ -63,7 +63,15 @@ export default function AuditsPage() {
         }
     }, [load])
 
-    if (!mounted) return null
+    if (!mounted) return (
+        <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
+            <div className="h-10 w-56 bg-muted rounded-lg animate-pulse" />
+            <div className="h-12 bg-muted rounded-lg animate-pulse" />
+            <div className="space-y-3">
+                {[...Array(5)].map((_, i) => <div key={i} className="h-20 bg-muted rounded-xl animate-pulse" />)}
+            </div>
+        </div>
+    )
 
     const toggleSort = (key: SortKey) => {
         if (sortKey === key) {

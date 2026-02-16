@@ -486,7 +486,15 @@ export default function RankingsPage() {
         window.dispatchEvent(new Event("auditor:update"))
     }
 
-    if (!mounted) return null
+    if (!mounted) return (
+        <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+            <div className="h-10 w-48 bg-muted rounded-lg animate-pulse" />
+            <div className="grid md:grid-cols-3 gap-4">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-muted rounded-xl animate-pulse" />)}
+            </div>
+            <div className="h-80 bg-muted rounded-xl animate-pulse" />
+        </div>
+    )
 
     const selectedSite = selectedSiteId ? getSiteById(selectedSiteId) : null
 
@@ -851,11 +859,11 @@ export default function RankingsPage() {
                                                         <span className="text-sm font-medium">{s.phrase}</span>
                                                     </div>
                                                     <span className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${s.source === "title" ? "bg-orange-100 text-orange-700" :
-                                                            s.source === "h1" ? "bg-blue-100 text-blue-700" :
-                                                                s.source === "meta" ? "bg-purple-100 text-purple-700" :
-                                                                    s.source === "h2" ? "bg-cyan-100 text-cyan-700" :
-                                                                        s.source === "h3" ? "bg-teal-100 text-teal-700" :
-                                                                            "bg-zinc-100 text-zinc-600"
+                                                        s.source === "h1" ? "bg-blue-100 text-blue-700" :
+                                                            s.source === "meta" ? "bg-purple-100 text-purple-700" :
+                                                                s.source === "h2" ? "bg-cyan-100 text-cyan-700" :
+                                                                    s.source === "h3" ? "bg-teal-100 text-teal-700" :
+                                                                        "bg-zinc-100 text-zinc-600"
                                                         }`}>
                                                         {s.source}
                                                     </span>

@@ -118,7 +118,18 @@ export default function DashboardPage() {
         }
     }, [load])
 
-    if (!mounted) return null
+    if (!mounted) return (
+        <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+            <div className="h-10 w-64 bg-muted rounded-lg animate-pulse" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-muted rounded-xl animate-pulse" />)}
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+                <div className="h-64 bg-muted rounded-xl animate-pulse" />
+                <div className="h-64 bg-muted rounded-xl animate-pulse" />
+            </div>
+        </div>
+    )
 
     // Show onboarding if no data
     if (stats.totalSites === 0 && stats.totalAudits === 0) {

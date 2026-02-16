@@ -24,6 +24,8 @@ import {
     Megaphone,
     Palette,
     ImagePlus,
+    Sparkles,
+    Zap,
 } from "lucide-react"
 import {
     getSettings,
@@ -324,8 +326,8 @@ export default function SettingsPage() {
                                     setToast(`Switched to ${config.label} tier`)
                                 }}
                                 className={`relative p-4 rounded-xl border-2 transition-all text-left ${tier === key
-                                        ? "border-orange-500 bg-orange-50/50 shadow-sm"
-                                        : "border-border hover:border-orange-300 hover:bg-muted/30"
+                                    ? "border-orange-500 bg-orange-50/50 shadow-sm"
+                                    : "border-border hover:border-orange-300 hover:bg-muted/30"
                                     }`}
                             >
                                 {tier === key && (
@@ -643,6 +645,49 @@ export default function SettingsPage() {
                     <p className="text-xs text-muted-foreground">
                         Password management and two-factor authentication will be available when the database is connected.
                     </p>
+                </CardContent>
+            </Card>
+
+            {/* AI Configuration */}
+            <Card className="shadow-sm border-zinc-200">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-violet-500" />
+                        AI Configuration
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {(() => {
+                        const { getAiUsage, getAiRemaining, AI_TIER_LIMITS } = require("@/lib/ai-usage")
+                        const usage = getAiUsage()
+                        const remaining = getAiRemaining(tier)
+                        const limit = AI_TIER_LIMITS[tier]
+                        const pct = limit > 0 ? Math.round((usage.count / limit) * 100) : 0
+                        return (
+                            <>
+                                <div>
+                                    <div className="flex items-center justify-between text-sm mb-2">
+                                        <span className="text-muted-foreground">Monthly AI Usage</span>
+                                        <span className="font-medium">{usage.count} / {limit} requests</span>
+                                    </div>
+                                    <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ${pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-orange-500" : "bg-violet-500"}`}
+                                            style={{ width: `${Math.min(pct, 100)}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1.5">
+                                        {remaining > 0 ? `${remaining} AI suggestions remaining this month` : "Quota reached — resets next month"}
+                                    </p>
+                                </div>
+                                <div className="p-3 bg-muted/40 rounded-lg text-xs text-muted-foreground space-y-1">
+                                    <p className="flex items-center gap-1.5"><Zap className="h-3 w-3" /> <strong>Plan:</strong> {tier.charAt(0).toUpperCase() + tier.slice(1)} — {limit} AI requests/month</p>
+                                    <p>Resets on the 1st of each month. AI suggestions use the configured API (OpenAI or Gemini).</p>
+                                    <p>API keys are configured as server environment variables (OPENAI_API_KEY or GEMINI_API_KEY).</p>
+                                </div>
+                            </>
+                        )
+                    })()}
                 </CardContent>
             </Card>
 

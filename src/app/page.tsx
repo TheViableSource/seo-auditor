@@ -140,10 +140,49 @@ function CopyButton({ text }: { text: string }) {
 // ============================================================
 function CheckRow({ check }: { check: AuditCheck }) {
   const [open, setOpen] = useState(false)
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
   const hasExtra = check.recommendation || check.details || check.codeSnippet || check.learnMoreUrl
+  const isFailing = check.status === "fail" || check.status === "warning"
+
+  const handleAiFix = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const settings = getSettings()
+    if (!canUseAi(settings.tier)) {
+      setAiSuggestion("⚡ AI fix quota reached for this month. Upgrade your plan for more AI suggestions.")
+      setOpen(true)
+      return
+    }
+    setAiLoading(true)
+    setOpen(true)
+    try {
+      const res = await fetch("/api/ai-fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: check.title,
+          description: check.description || "",
+          recommendation: check.recommendation || "",
+          codeSnippet: check.codeSnippet || "",
+          severity: check.severity,
+        }),
+      })
+      const data = await res.json()
+      if (data.fix) {
+        incrementAiUsage()
+        setAiSuggestion(data.fix)
+      } else {
+        setAiSuggestion("Unable to generate a suggestion. Try again later.")
+      }
+    } catch {
+      setAiSuggestion("Failed to get AI suggestion. Please try again.")
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   return (
-    <div className={`border-b border-border/50 last:border-b-0 ${check.status === "fail" ? "bg-red-50/30" : check.status === "warning" ? "bg-orange-50/20" : ""}`}>
+    <div className={`border-b border-border/50 last:border-b-0 ${check.status === "fail" ? "bg-red-50/30 dark:bg-red-950/10" : check.status === "warning" ? "bg-orange-50/20 dark:bg-orange-950/10" : ""}`}>
       <button className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
         onClick={() => hasExtra && setOpen(!open)}>
         <StatusIcon status={check.status} />
@@ -151,12 +190,20 @@ function CheckRow({ check }: { check: AuditCheck }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-sm text-foreground">{check.title}</span>
             <SeverityBadge severity={check.severity} />
-            {check.recommendation && !open && (check.status === "fail" || check.status === "warning") && (
+            {check.recommendation && !open && isFailing && (
               <span className="text-[10px] text-orange-500 flex items-center gap-0.5"><Lightbulb className="h-2.5 w-2.5" />Has fix</span>
             )}
           </div>
           {check.value && <p className="text-xs text-muted-foreground mt-0.5 truncate">{String(check.value)}</p>}
         </div>
+        {isFailing && !aiSuggestion && (
+          <button onClick={handleAiFix} disabled={aiLoading}
+            className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/40 dark:text-violet-300 dark:hover:bg-violet-900/60 transition-colors disabled:opacity-50"
+            title="Get AI-powered fix suggestion">
+            {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+            AI Fix
+          </button>
+        )}
         {hasExtra && (open ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />)}
       </button>
       {open && hasExtra && (
@@ -166,13 +213,32 @@ function CheckRow({ check }: { check: AuditCheck }) {
 
           {/* RECOMMENDATION */}
           {check.recommendation && (
-            <div className={`p-3 rounded-lg border ${check.status === "fail" ? "bg-red-50/50 border-red-200" : check.status === "warning" ? "bg-orange-50/50 border-orange-200" : "bg-green-50/50 border-green-200"}`}>
+            <div className={`p-3 rounded-lg border ${check.status === "fail" ? "bg-red-50/50 border-red-200 dark:bg-red-950/20 dark:border-red-800" : check.status === "warning" ? "bg-orange-50/50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-800" : "bg-green-50/50 border-green-200 dark:bg-green-950/20 dark:border-green-800"}`}>
               <div className="flex items-start gap-2">
                 <Lightbulb className={`h-4 w-4 shrink-0 mt-0.5 ${check.status === "fail" ? "text-red-500" : check.status === "warning" ? "text-orange-500" : "text-green-500"}`} />
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-foreground leading-relaxed">{check.recommendation}</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* AI SUGGESTION */}
+          {aiSuggestion && (
+            <div className="p-3 rounded-lg border border-violet-200 bg-violet-50/50 dark:border-violet-800 dark:bg-violet-950/20">
+              <div className="flex items-start gap-2">
+                <Sparkles className="h-4 w-4 shrink-0 mt-0.5 text-violet-500" />
+                <div className="space-y-1 flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider">AI Suggestion</p>
+                  <div className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{aiSuggestion}</div>
+                </div>
+              </div>
+            </div>
+          )}
+          {aiLoading && (
+            <div className="flex items-center gap-2 text-xs text-violet-600 dark:text-violet-400">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Generating AI fix suggestion…
             </div>
           )}
 
@@ -201,6 +267,7 @@ function CheckRow({ check }: { check: AuditCheck }) {
     </div>
   )
 }
+
 
 // ============================================================
 // CATEGORY PANEL
