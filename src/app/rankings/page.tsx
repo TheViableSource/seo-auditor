@@ -49,7 +49,7 @@ import {
     type StoredRankSnapshot,
     type LocalRankEntry,
 } from "@/lib/local-storage"
-import { BubbleMap } from "@/components/BubbleMap"
+import { BubbleMap, type BusinessLocation } from "@/components/BubbleMap"
 
 /* ------------------------------------------------------------------ */
 /*  Radar Chart (SVG)                                                   */
@@ -250,6 +250,11 @@ export default function RankingsPage() {
     const [localRankResults, setLocalRankResults] = useState<LocalRankEntry[]>([])
     const [localRankLoading, setLocalRankLoading] = useState(false)
     const [hasLocalRankAccess, setHasLocalRankAccess] = useState(false)
+
+    // Business address state
+    const [businessAddress, setBusinessAddress] = useState("")
+    const [businessLocation, setBusinessLocation] = useState<BusinessLocation | null>(null)
+    const [geocoding, setGeocoding] = useState(false)
 
     // Competitors
     const [competitors, setCompetitors] = useState<StoredCompetitor[]>([])
@@ -1070,6 +1075,55 @@ export default function RankingsPage() {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
+                                    {/* Business Address */}
+                                    <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/30">
+                                        <p className="text-xs font-semibold text-orange-700 dark:text-orange-400 mb-2 flex items-center gap-1.5">
+                                            <MapPin className="h-3.5 w-3.5" /> Business Address (map center)
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={businessAddress}
+                                                onChange={(e) => setBusinessAddress(e.target.value)}
+                                                placeholder="e.g. 123 Main St, Portland, OR 97201"
+                                                className="flex-1 border border-orange-200 dark:border-orange-800/40 rounded-lg px-3 py-2 text-sm bg-background focus:ring-2 focus:ring-orange-500 outline-none"
+                                            />
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={!businessAddress.trim() || geocoding}
+                                                className="text-xs border-orange-300"
+                                                onClick={async () => {
+                                                    setGeocoding(true)
+                                                    try {
+                                                        const res = await fetch(
+                                                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(businessAddress)}&limit=1`,
+                                                            { headers: { "User-Agent": "AuditorPro/1.0" } }
+                                                        )
+                                                        const data = await res.json()
+                                                        if (data[0]) {
+                                                            const loc: BusinessLocation = {
+                                                                lat: parseFloat(data[0].lat),
+                                                                lng: parseFloat(data[0].lon),
+                                                                label: businessAddress,
+                                                            }
+                                                            setBusinessLocation(loc)
+                                                            localStorage.setItem("auditor:businessLocation", JSON.stringify(loc))
+                                                        }
+                                                    } catch { /* silent */ }
+                                                    finally { setGeocoding(false) }
+                                                }}
+                                            >
+                                                {geocoding ? <Loader2 className="h-3 w-3 animate-spin" /> : "Set Location"}
+                                            </Button>
+                                        </div>
+                                        {businessLocation && (
+                                            <p className="text-[11px] text-orange-600/70 dark:text-orange-400/60 mt-1.5">
+                                                📍 {businessLocation.label} ({businessLocation.lat.toFixed(4)}, {businessLocation.lng.toFixed(4)})
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
@@ -1142,8 +1196,8 @@ export default function RankingsPage() {
                                                         )
                                                     }}
                                                     className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${localRankCities.includes(city)
-                                                            ? "bg-orange-500 text-white"
-                                                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                                        ? "bg-orange-500 text-white"
+                                                        : "bg-muted text-muted-foreground hover:bg-muted/80"
                                                         }`}
                                                 >
                                                     {city}
@@ -1161,7 +1215,7 @@ export default function RankingsPage() {
                                         <CardTitle className="text-base">Geographic Rank Distribution</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <BubbleMap data={localRankResults} keyword={localRankKeyword} />
+                                        <BubbleMap data={localRankResults} keyword={localRankKeyword} businessLocation={businessLocation} />
                                     </CardContent>
                                 </Card>
                             )}
@@ -1195,8 +1249,8 @@ export default function RankingsPage() {
                                                                 </td>
                                                                 <td className="py-2 px-4 text-center">
                                                                     <span className={`font-bold ${!entry.rank ? "text-zinc-400" :
-                                                                            entry.rank <= 3 ? "text-green-600" :
-                                                                                entry.rank <= 10 ? "text-orange-600" : "text-red-600"
+                                                                        entry.rank <= 3 ? "text-green-600" :
+                                                                            entry.rank <= 10 ? "text-orange-600" : "text-red-600"
                                                                         }`}>
                                                                         {entry.rank ? `#${entry.rank}` : "N/A"}
                                                                     </span>

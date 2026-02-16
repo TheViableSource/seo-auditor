@@ -13,6 +13,7 @@ import {
   Menu,
   Globe,
   ChevronDown,
+  ChevronRight,
   History,
   GitCompareArrows,
   Swords,
@@ -22,6 +23,7 @@ import {
   BookOpen,
   HelpCircle,
   Users,
+  Map,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -42,6 +44,86 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>
   disabled?: boolean
   badge?: number
+}
+
+interface NavGroup {
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  items: NavItem[]
+  defaultOpen?: boolean
+}
+
+function NavSection({
+  group,
+  pathname,
+  onNavClick,
+}: {
+  group: NavGroup
+  pathname: string
+  onNavClick?: () => void
+}) {
+  const hasActive = group.items.some((i) => i.href === pathname)
+  const [open, setOpen] = useState(group.defaultOpen || hasActive)
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className={cn(
+          "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-colors",
+          hasActive
+            ? "text-sidebar-foreground"
+            : "text-sidebar-foreground/40 hover:text-sidebar-foreground/70"
+        )}
+      >
+        <group.icon className="w-3.5 h-3.5" aria-hidden="true" />
+        {group.label}
+        {open ? (
+          <ChevronDown className="ml-auto w-3 h-3" />
+        ) : (
+          <ChevronRight className="ml-auto w-3 h-3" />
+        )}
+      </button>
+      {open && (
+        <div className="mt-0.5 space-y-0.5 ml-1">
+          {group.items.map((item) => {
+            const isActive = pathname === item.href
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.label}
+                href={item.disabled ? "#" : item.href}
+                onClick={onNavClick}
+                className={cn(
+                  "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-all",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                    : item.disabled
+                      ? "text-sidebar-foreground/30 cursor-not-allowed"
+                      : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                )}
+                aria-current={isActive ? "page" : undefined}
+                aria-disabled={item.disabled}
+              >
+                <Icon className="w-4 h-4" aria-hidden="true" />
+                {item.label}
+                {item.disabled && (
+                  <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-sidebar-foreground/10 text-sidebar-foreground/30 font-normal">
+                    Soon
+                  </span>
+                )}
+                {!item.disabled && item.badge !== undefined && item.badge > 0 && (
+                  <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-bold min-w-[20px] text-center">
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
@@ -87,23 +169,53 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
 
   const isAgency = mounted && TIER_LIMITS[settings.tier]?.clientAssignment
 
-  const navItems: NavItem[] = [
+  // Top-level standalone links
+  const topLinks: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/", label: "Quick Audit", icon: FileText },
-    { href: "/sites", label: "Sites", icon: Globe, badge: mounted ? sitesCount : undefined },
-    { href: "/audits", label: "Audit History", icon: History, badge: mounted ? auditsCount : undefined },
-    { href: "/reports", label: "Reports", icon: FileText },
-    { href: "/internal-links", label: "Internal Links", icon: Globe },
-    { href: "/compare", label: "Compare", icon: GitCompareArrows },
-    { href: "/competitor-gap", label: "Competitor Gap", icon: Swords },
-    { href: "/serp-simulator", label: "SERP Simulator", icon: Monitor },
-    { href: "/schema-generator", label: "Schema Generator", icon: Code },
-    { href: "/rankings", label: "Rankings", icon: BarChart3 },
-    { href: "/widget", label: "Widgets", icon: Code },
-    ...(isAgency ? [{ href: "/clients", label: "Clients", icon: Users }] : []),
-    { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
-    { href: "/help", label: "Help Desk", icon: HelpCircle },
-    { href: "/settings", label: "Settings", icon: Settings },
+    { href: "/", label: "Quick Audit", icon: Search },
+  ]
+
+  // Grouped nav sections
+  const navGroups: NavGroup[] = [
+    {
+      label: "Sites & Audits",
+      icon: Globe,
+      defaultOpen: true,
+      items: [
+        { href: "/sites", label: "Sites", icon: Globe, badge: mounted ? sitesCount : undefined },
+        { href: "/audits", label: "Audit History", icon: History, badge: mounted ? auditsCount : undefined },
+        { href: "/compare", label: "Compare", icon: GitCompareArrows },
+        { href: "/reports", label: "Reports", icon: FileText },
+      ],
+    },
+    {
+      label: "SEO Tools",
+      icon: Code,
+      items: [
+        { href: "/rankings", label: "Rankings", icon: BarChart3 },
+        { href: "/competitor-gap", label: "Competitor Gap", icon: Swords },
+        { href: "/serp-simulator", label: "SERP Simulator", icon: Monitor },
+        { href: "/schema-generator", label: "Schema Generator", icon: Code },
+        { href: "/internal-links", label: "Internal Links", icon: Globe },
+        { href: "/widget", label: "Widgets", icon: Code },
+      ],
+    },
+    {
+      label: "Local SEO",
+      icon: Map,
+      items: [
+        { href: "/gmb-audit", label: "GMB Audit", icon: Map },
+        ...(isAgency ? [{ href: "/clients", label: "Clients", icon: Users }] : []),
+      ],
+    },
+    {
+      label: "Support",
+      icon: BookOpen,
+      items: [
+        { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
+        { href: "/help", label: "Help Desk", icon: HelpCircle },
+      ],
+    },
   ]
 
   return (
@@ -138,41 +250,55 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 space-y-1" aria-label="Main navigation">
-        {navItems.map((item) => {
+      <nav className="flex-1 px-4 space-y-1 overflow-y-auto" aria-label="Main navigation">
+        {/* Top standalone links */}
+        {topLinks.map((item) => {
           const isActive = pathname === item.href
           const Icon = item.icon
           return (
             <Link
               key={item.label}
-              href={item.disabled ? "#" : item.href}
+              href={item.href}
               onClick={onNavClick}
               className={cn(
-                "flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-medium transition-all",
+                "flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-medium transition-all",
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                  : item.disabled
-                    ? "text-sidebar-foreground/30 cursor-not-allowed"
-                    : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
               )}
               aria-current={isActive ? "page" : undefined}
-              aria-disabled={item.disabled}
             >
-              <Icon className="w-4.5 h-4.5" aria-hidden="true" />
+              <Icon className="w-4 h-4" aria-hidden="true" />
               {item.label}
-              {item.disabled && (
-                <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-sidebar-foreground/10 text-sidebar-foreground/30 font-normal">
-                  Soon
-                </span>
-              )}
-              {!item.disabled && item.badge !== undefined && item.badge > 0 && (
-                <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-bold min-w-[20px] text-center">
-                  {item.badge}
-                </span>
-              )}
             </Link>
           )
         })}
+
+        {/* Divider */}
+        <div className="!mt-3 !mb-2 border-t border-sidebar-border/50" />
+
+        {/* Grouped sections */}
+        {navGroups.map((group) => (
+          <NavSection key={group.label} group={group} pathname={pathname} onNavClick={onNavClick} />
+        ))}
+
+        {/* Settings standalone */}
+        <div className="!mt-2 border-t border-sidebar-border/50 !pt-2">
+          <Link
+            href="/settings"
+            onClick={onNavClick}
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-medium transition-all",
+              pathname === "/settings"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+            )}
+            aria-current={pathname === "/settings" ? "page" : undefined}
+          >
+            <Settings className="w-4 h-4" aria-hidden="true" />
+            Settings
+          </Link>
+        </div>
       </nav>
 
       {/* Footer: dark mode + user */}
