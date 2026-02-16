@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,8 +12,18 @@ import {
     Crown,
     Mail,
     Lock,
+    Download,
+    Upload,
+    CheckCircle,
 } from "lucide-react"
-import { mockUser, mockWorkspace } from "@/lib/mock-data"
+import {
+    getSettings,
+    updateSettings,
+    exportAllData,
+    importData,
+    getSites,
+    getAudits,
+} from "@/lib/local-storage"
 
 function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () => void; label: string }) {
     return (
@@ -32,11 +42,24 @@ function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () =
     )
 }
 
-export default function SettingsPage() {
-    const [name, setName] = useState(mockUser.name)
-    const [email, setEmail] = useState(mockUser.email)
-    const [workspaceName, setWorkspaceName] = useState(mockWorkspace.name)
+function Toast({ message, onClose }: { message: string; onClose: () => void }) {
+    useEffect(() => {
+        const timer = setTimeout(onClose, 3000)
+        return () => clearTimeout(timer)
+    }, [onClose])
 
+    return (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg animate-in slide-in-from-bottom-4">
+            <CheckCircle className="h-4 w-4 shrink-0" />
+            <span className="text-sm font-medium">{message}</span>
+        </div>
+    )
+}
+
+export default function SettingsPage() {
+    const [name, setName] = useState("")
+    const [email, setEmail] = useState("")
+    const [workspaceName, setWorkspaceName] = useState("")
     const [notifications, setNotifications] = useState({
         auditComplete: true,
         weeklyReport: true,
@@ -44,9 +67,74 @@ export default function SettingsPage() {
         newIssues: false,
         teamUpdates: true,
     })
+    const [toast, setToast] = useState("")
+    const [mounted, setMounted] = useState(false)
+    const [dataStats, setDataStats] = useState({ sites: 0, audits: 0 })
+
+    useEffect(() => {
+        const s = getSettings()
+        setName(s.userName)
+        setEmail(s.userEmail)
+        setWorkspaceName(s.workspaceName)
+        setNotifications(s.notifications)
+        setDataStats({ sites: getSites().length, audits: getAudits().length })
+        setMounted(true)
+    }, [])
+
+    if (!mounted) return null
+
+    const saveProfile = () => {
+        updateSettings({ userName: name, userEmail: email })
+        setToast("Profile saved!")
+    }
+
+    const saveWorkspace = () => {
+        updateSettings({ workspaceName })
+        setToast("Workspace updated!")
+    }
+
+    const saveNotifications = () => {
+        updateSettings({ notifications })
+        setToast("Notification preferences saved!")
+    }
 
     const toggleNotification = (key: keyof typeof notifications) => {
         setNotifications((prev) => ({ ...prev, [key]: !prev[key] }))
+    }
+
+    const handleExport = () => {
+        const data = exportAllData()
+        const blob = new Blob([data], { type: "application/json" })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `auditor-backup-${new Date().toISOString().split("T")[0]}.json`
+        a.click()
+        URL.revokeObjectURL(url)
+        setToast("Data exported!")
+    }
+
+    const handleImport = () => {
+        const input = document.createElement("input")
+        input.type = "file"
+        input.accept = ".json"
+        input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0]
+            if (!file) return
+            const reader = new FileReader()
+            reader.onload = (ev) => {
+                try {
+                    const result = importData(ev.target?.result as string)
+                    setDataStats({ sites: getSites().length, audits: getAudits().length })
+                    window.dispatchEvent(new Event("auditor:update"))
+                    setToast(`Imported ${result.sites} sites and ${result.audits} audits!`)
+                } catch {
+                    setToast("Import failed — invalid file format.")
+                }
+            }
+            reader.readAsText(file)
+        }
+        input.click()
     }
 
     return (
@@ -102,7 +190,7 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    <Button className="gap-2 bg-orange-500 hover:bg-orange-600 text-white mt-2">
+                    <Button className="gap-2 bg-orange-500 hover:bg-orange-600 text-white mt-2" onClick={saveProfile}>
                         <Save className="h-4 w-4" />
                         Save Changes
                     </Button>
@@ -119,7 +207,7 @@ export default function SettingsPage() {
                         <CardTitle className="text-lg">Workspace</CardTitle>
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200">
                             <Crown className="h-3 w-3" />
-                            {mockWorkspace.plan}
+                            Pro
                         </span>
                     </div>
                 </CardHeader>
@@ -137,16 +225,16 @@ export default function SettingsPage() {
 
                     <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                         <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Members</p>
-                            <p className="text-xl font-bold text-foreground mt-1">{mockWorkspace.memberCount}</p>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Tracked Sites</p>
+                            <p className="text-xl font-bold text-foreground mt-1">{dataStats.sites}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Workspace ID</p>
-                            <p className="text-sm font-mono text-muted-foreground mt-2">{mockWorkspace.slug}</p>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Total Audits</p>
+                            <p className="text-xl font-bold text-foreground mt-1">{dataStats.audits}</p>
                         </div>
                     </div>
 
-                    <Button className="gap-2 bg-orange-500 hover:bg-orange-600 text-white">
+                    <Button className="gap-2 bg-orange-500 hover:bg-orange-600 text-white" onClick={saveWorkspace}>
                         <Save className="h-4 w-4" />
                         Update Workspace
                     </Button>
@@ -162,39 +250,49 @@ export default function SettingsPage() {
                     <CardTitle className="text-lg">Notifications</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <Toggle
-                        enabled={notifications.auditComplete}
-                        onToggle={() => toggleNotification("auditComplete")}
-                        label="Audit completion emails"
-                    />
-                    <Toggle
-                        enabled={notifications.weeklyReport}
-                        onToggle={() => toggleNotification("weeklyReport")}
-                        label="Weekly performance reports"
-                    />
-                    <Toggle
-                        enabled={notifications.scoreDrops}
-                        onToggle={() => toggleNotification("scoreDrops")}
-                        label="Alert on significant score drops"
-                    />
-                    <Toggle
-                        enabled={notifications.newIssues}
-                        onToggle={() => toggleNotification("newIssues")}
-                        label="New issues detected"
-                    />
-                    <Toggle
-                        enabled={notifications.teamUpdates}
-                        onToggle={() => toggleNotification("teamUpdates")}
-                        label="Team member activity"
-                    />
+                    <Toggle enabled={notifications.auditComplete} onToggle={() => toggleNotification("auditComplete")} label="Audit completion emails" />
+                    <Toggle enabled={notifications.weeklyReport} onToggle={() => toggleNotification("weeklyReport")} label="Weekly performance reports" />
+                    <Toggle enabled={notifications.scoreDrops} onToggle={() => toggleNotification("scoreDrops")} label="Alert on significant score drops" />
+                    <Toggle enabled={notifications.newIssues} onToggle={() => toggleNotification("newIssues")} label="New issues detected" />
+                    <Toggle enabled={notifications.teamUpdates} onToggle={() => toggleNotification("teamUpdates")} label="Team member activity" />
+
+                    <Button className="gap-2 bg-orange-500 hover:bg-orange-600 text-white mt-2" onClick={saveNotifications}>
+                        <Save className="h-4 w-4" />
+                        Save Preferences
+                    </Button>
+                </CardContent>
+            </Card>
+
+            {/* Data Management */}
+            <Card className="shadow-sm border-zinc-200">
+                <CardHeader className="flex flex-row items-center gap-3 pb-4">
+                    <div className="p-2 bg-orange-50 rounded-lg">
+                        <Shield className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <CardTitle className="text-lg">Data Management</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                        Export your sites and audit history as a JSON backup, or import from a previous backup.
+                    </p>
+                    <div className="flex gap-3">
+                        <Button variant="outline" className="gap-2" onClick={handleExport}>
+                            <Download className="h-4 w-4" />
+                            Export All Data
+                        </Button>
+                        <Button variant="outline" className="gap-2" onClick={handleImport}>
+                            <Upload className="h-4 w-4" />
+                            Import Data
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
 
             {/* Security Section */}
             <Card className="shadow-sm border-zinc-200">
                 <CardHeader className="flex flex-row items-center gap-3 pb-4">
-                    <div className="p-2 bg-orange-50 rounded-lg">
-                        <Shield className="h-5 w-5 text-orange-600" />
+                    <div className="p-2 bg-slate-50 rounded-lg">
+                        <Lock className="h-5 w-5 text-slate-600" />
                     </div>
                     <CardTitle className="text-lg">Security</CardTitle>
                 </CardHeader>
@@ -204,7 +302,7 @@ export default function SettingsPage() {
                         Change Password
                     </Button>
                     <p className="text-xs text-muted-foreground">
-                        Two-factor authentication and API key management coming soon.
+                        Password management and two-factor authentication will be available when the database is connected.
                     </p>
                 </CardContent>
             </Card>
@@ -223,6 +321,9 @@ export default function SettingsPage() {
                     </Button>
                 </CardContent>
             </Card>
+
+            {/* Toast */}
+            {toast && <Toast message={toast} onClose={() => setToast("")} />}
         </div>
     )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -13,6 +13,7 @@ import {
   Menu,
   Globe,
   ChevronDown,
+  History,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -23,18 +24,50 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
+import { getSites, getAudits, getSettings } from "@/lib/local-storage"
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/", label: "Quick Audit", icon: FileText },
-  { href: "/sites", label: "Sites", icon: Globe },
-  { href: "/serp-simulator", label: "SERP Simulator", icon: Monitor },
-  { href: "#", label: "Rankings", icon: BarChart3, disabled: true },
-  { href: "/settings", label: "Settings", icon: Settings },
-]
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  disabled?: boolean
+  badge?: number
+}
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname()
+  const [settings, setSettings] = useState({ workspaceName: "AuditorPro", userName: "User" })
+  const [sitesCount, setSitesCount] = useState(0)
+  const [auditsCount, setAuditsCount] = useState(0)
+  const [mounted, setMounted] = useState(false)
+
+  const load = useCallback(() => {
+    setSettings(getSettings())
+    setSitesCount(getSites().length)
+    setAuditsCount(getAudits().length)
+  }, [])
+
+  useEffect(() => {
+    load()
+    setMounted(true)
+    const handler = () => load()
+    window.addEventListener("storage", handler)
+    window.addEventListener("auditor:update", handler)
+    return () => {
+      window.removeEventListener("storage", handler)
+      window.removeEventListener("auditor:update", handler)
+    }
+  }, [load])
+
+  const navItems: NavItem[] = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/", label: "Quick Audit", icon: FileText },
+    { href: "/sites", label: "Sites", icon: Globe, badge: mounted ? sitesCount : undefined },
+    { href: "/audits", label: "Audit History", icon: History, badge: mounted ? auditsCount : undefined },
+    { href: "/serp-simulator", label: "SERP Simulator", icon: Monitor },
+    { href: "#", label: "Rankings", icon: BarChart3, disabled: true },
+    { href: "/settings", label: "Settings", icon: Settings },
+  ]
 
   return (
     <>
@@ -53,10 +86,12 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
         <button className="w-full flex items-center justify-between p-3 rounded-lg bg-sidebar-accent/50 hover:bg-sidebar-accent transition-colors text-left group">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-md bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
-              V
+              {mounted ? settings.workspaceName.charAt(0).toUpperCase() : "A"}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-sidebar-foreground truncate">The Viable Source</p>
+              <p className="text-xs font-semibold text-sidebar-foreground truncate">
+                {mounted ? settings.workspaceName : "AuditorPro"}
+              </p>
               <p className="text-[10px] text-sidebar-foreground/50">Pro Plan</p>
             </div>
           </div>
@@ -92,6 +127,11 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
                   Soon
                 </span>
               )}
+              {!item.disabled && item.badge !== undefined && item.badge > 0 && (
+                <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-bold min-w-[20px] text-center">
+                  {item.badge}
+                </span>
+              )}
             </Link>
           )
         })}
@@ -104,10 +144,12 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
             className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center font-bold text-sm shadow-sm"
             aria-hidden="true"
           >
-            J
+            {mounted ? settings.userName.charAt(0).toUpperCase() : "U"}
           </div>
           <div className="text-sm min-w-0">
-            <p className="font-medium text-sidebar-foreground truncate">Jeremy Marcott</p>
+            <p className="font-medium text-sidebar-foreground truncate">
+              {mounted ? settings.userName : "User"}
+            </p>
             <p className="text-sidebar-foreground/50 text-xs">Pro Plan</p>
           </div>
         </Link>

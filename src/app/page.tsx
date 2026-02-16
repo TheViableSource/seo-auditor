@@ -40,6 +40,7 @@ import {
 } from "lucide-react"
 import type { AuditResult, AuditCategory, AuditCheck, CheckStatus, ContentAnalysisData, PageResourcesData, SocialPreviewData } from "@/lib/types"
 import { AuditResultsSkeleton } from "@/components/AuditResultsSkeleton"
+import { saveAudit } from "@/lib/local-storage"
 
 // ============================================================
 // SCORE RING COMPONENT
@@ -575,6 +576,24 @@ export default function Home() {
       setResult(data)
       setActiveTab("on-page")
       setActivePanel("checks")
+
+      // Auto-save to localStorage + register site
+      try {
+        const issuesCount = (data.categories || []).reduce(
+          (sum: number, cat: AuditCategory) => sum + cat.checks.filter((c: AuditCheck) => c.status === "fail").length, 0
+        )
+        const categorySummary = (data.categories || []).map((cat: AuditCategory) => ({
+          name: cat.name,
+          label: cat.label,
+          score: cat.score,
+          total: cat.checks.length,
+          passed: cat.checks.filter((c: AuditCheck) => c.status === "pass").length,
+        }))
+        saveAudit(url, data.overallScore, issuesCount, categorySummary)
+        window.dispatchEvent(new Event("auditor:update"))
+      } catch (e) {
+        console.warn("Failed to save audit to localStorage:", e)
+      }
     } catch {
       setError("Failed to audit this site. Please check the URL and try again.")
     } finally {
