@@ -9,6 +9,7 @@ import {
     ExternalLink,
     Zap,
     Trash2,
+    CalendarClock,
     AlertTriangle,
     CheckCircle,
     Clock,
@@ -20,6 +21,7 @@ import {
     getSites,
     addSite,
     removeSite,
+    updateSite,
     getLatestAuditForSite,
     getAuditsForSite,
     type StoredSite,
@@ -308,23 +310,41 @@ export default function SitesPage() {
                                     )}
                                 </div>
 
-                                <div className="flex gap-2">
-                                    <Link href={`/sites/${site.id}`}>
-                                        <Button size="sm" variant="outline" className="gap-1.5">
-                                            <Globe className="h-3.5 w-3.5" />
-                                            Details
-                                        </Button>
-                                    </Link>
-                                    <Link href={`/?url=${encodeURIComponent(site.url)}`}>
-                                        <Button size="sm" className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white">
-                                            <Zap className="h-3.5 w-3.5" />
-                                            Audit
-                                        </Button>
-                                    </Link>
-                                    <Button size="sm" variant="ghost" className="px-2 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => setDeleteTarget(site)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                {/* Schedule */}
+                                <div className="flex items-center gap-1.5">
+                                    <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <select
+                                        value={site.auditSchedule || "manual"}
+                                        onChange={(e) => {
+                                            const val = e.target.value as "manual" | "weekly" | "monthly"
+                                            updateSite(site.id, { auditSchedule: val })
+                                            load()
+                                        }}
+                                        className="text-xs bg-muted/50 border border-border rounded px-1.5 py-1 text-foreground focus:ring-1 focus:ring-orange-500 outline-none cursor-pointer"
+                                    >
+                                        <option value="manual">Manual</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="monthly">Monthly</option>
+                                    </select>
                                 </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <Link href={`/sites/${site.id}`}>
+                                    <Button size="sm" variant="outline" className="gap-1.5">
+                                        <Globe className="h-3.5 w-3.5" />
+                                        Details
+                                    </Button>
+                                </Link>
+                                <Link href={`/?url=${encodeURIComponent(site.url)}`}>
+                                    <Button size="sm" className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white">
+                                        <Zap className="h-3.5 w-3.5" />
+                                        Audit
+                                    </Button>
+                                </Link>
+                                <Button size="sm" variant="ghost" className="px-2 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => setDeleteTarget(site)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>

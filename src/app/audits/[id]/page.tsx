@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -17,9 +17,13 @@ import {
     Code,
     ExternalLink,
     GitCompareArrows,
+    FileDown,
+    Loader2,
 } from "lucide-react"
-import { getAuditById, getSiteById, getComparableAudits } from "@/lib/local-storage"
-import type { StoredAudit, StoredFullCategory, StoredFullCheck } from "@/lib/local-storage"
+import { getAuditById, getSiteById, getComparableAudits, getSettings } from "@/lib/local-storage"
+import type { StoredAudit, StoredFullCategory, StoredFullCheck, StoredSettings } from "@/lib/local-storage"
+import ReportPreview from "@/components/ReportPreview"
+import { generatePdfFromElement } from "@/lib/pdf-report"
 
 /* ------------------------------------------------------------------ */
 /*  Score ring                                                          */
@@ -181,6 +185,9 @@ export default function AuditDetailPage() {
     const [otherAudits, setOtherAudits] = useState<StoredAudit[]>([])
     const [showCompareDropdown, setShowCompareDropdown] = useState(false)
     const [mounted, setMounted] = useState(false)
+    const [generatingPdf, setGeneratingPdf] = useState(false)
+    const [settings, setSettings] = useState<StoredSettings | null>(null)
+    const reportRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         const a = getAuditById(auditId)
@@ -188,12 +195,25 @@ export default function AuditDetailPage() {
             setAudit(a)
             const site = getSiteById(a.siteId)
             setSiteName(site?.name || a.domain)
-            // Get other comparable audits for this site
             const comparable = getComparableAudits(a.siteId).filter(c => c.id !== auditId)
             setOtherAudits(comparable)
         }
+        setSettings(getSettings())
         setMounted(true)
     }, [auditId])
+
+    const handleDownloadPdf = async () => {
+        if (!reportRef.current || !audit) return
+        setGeneratingPdf(true)
+        try {
+            const filename = `${audit.domain.replace(/[^a-z0-9]/gi, "-")}-audit-${new Date(audit.createdAt).toISOString().split("T")[0]}`
+            await generatePdfFromElement(reportRef.current, filename)
+        } catch (err) {
+            console.error("PDF generation failed:", err)
+        } finally {
+            setGeneratingPdf(false)
+        }
+    }
 
     if (!mounted) return null
 
@@ -270,6 +290,18 @@ export default function AuditDetailPage() {
                             )}
                         </div>
                     )}
+                    <button
+                        onClick={handleDownloadPdf}
+                        disabled={generatingPdf}
+                        className="flex items-center gap-2 px-4 py-2 border border-border hover:bg-muted rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-wait"
+                    >
+                        {generatingPdf ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <FileDown className="w-4 h-4" />
+                        )}
+                        {generatingPdf ? "Generating…" : "Download PDF"}
+                    </button>
                     <Link
                         href={`/?url=${encodeURIComponent(audit.url)}`}
                         className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
@@ -354,6 +386,14 @@ export default function AuditDetailPage() {
                         ))}
                     </div>
                 </div>
+            )}
+            {/* Hidden PDF render target */}
+            {audit && settings && (
+                <ReportPreview
+                    audit={audit}
+                    settings={settings}
+                    containerRef={reportRef}
+                />
             )}
         </div>
     )

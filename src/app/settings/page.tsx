@@ -22,6 +22,8 @@ import {
     BarChart3,
     Store,
     Megaphone,
+    Palette,
+    ImagePlus,
 } from "lucide-react"
 import {
     getSettings,
@@ -30,7 +32,9 @@ import {
     importData,
     getSites,
     getAudits,
+    TIER_LIMITS,
 } from "@/lib/local-storage"
+import type { UserTier } from "@/lib/local-storage"
 
 function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () => void; label: string }) {
     return (
@@ -78,6 +82,12 @@ export default function SettingsPage() {
     const [mounted, setMounted] = useState(false)
     const [dataStats, setDataStats] = useState({ sites: 0, audits: 0 })
 
+    // Tier & branding
+    const [tier, setTier] = useState<UserTier>("pro")
+    const [brandLogo, setBrandLogo] = useState<string | undefined>(undefined)
+    const [brandName, setBrandName] = useState("")
+    const [brandColor, setBrandColor] = useState("#f97316")
+
     // Google Integrations
     const [googleStatus, setGoogleStatus] = useState<{
         configured: boolean
@@ -114,6 +124,10 @@ export default function SettingsPage() {
         setEmail(s.userEmail)
         setWorkspaceName(s.workspaceName)
         setNotifications(s.notifications)
+        setTier(s.tier)
+        setBrandLogo(s.brandLogo)
+        setBrandName(s.brandName || "")
+        setBrandColor(s.brandColor || "#f97316")
         setDataStats({ sites: getSites().length, audits: getAudits().length })
         setMounted(true)
 
@@ -290,6 +304,168 @@ export default function SettingsPage() {
                     </Button>
                 </CardContent>
             </Card>
+
+            {/* Subscription Tier */}
+            <Card className="shadow-sm border-zinc-200">
+                <CardHeader className="flex flex-row items-center gap-3 pb-4">
+                    <div className="p-2 bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg">
+                        <Crown className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <CardTitle className="text-lg">Subscription Tier</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {(Object.entries(TIER_LIMITS) as [UserTier, typeof TIER_LIMITS[UserTier]][]).map(([key, config]) => (
+                            <button
+                                key={key}
+                                onClick={() => {
+                                    setTier(key)
+                                    updateSettings({ tier: key })
+                                    setToast(`Switched to ${config.label} tier`)
+                                }}
+                                className={`relative p-4 rounded-xl border-2 transition-all text-left ${tier === key
+                                        ? "border-orange-500 bg-orange-50/50 shadow-sm"
+                                        : "border-border hover:border-orange-300 hover:bg-muted/30"
+                                    }`}
+                            >
+                                {tier === key && (
+                                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-orange-500" />
+                                )}
+                                <p className="font-bold text-sm">{config.label}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {config.sites === Infinity ? "Unlimited" : config.sites} site{config.sites !== 1 ? "s" : ""}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    {config.keywords === Infinity ? "Unlimited" : config.keywords} keywords
+                                </p>
+                                {config.pdfBranding && (
+                                    <span className="inline-block mt-2 text-[10px] font-bold text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">
+                                        Custom Branding
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Report Branding (Agency only) */}
+            {tier === "agency" && (
+                <Card className="shadow-sm border-orange-200 bg-orange-50/20">
+                    <CardHeader className="flex flex-row items-center gap-3 pb-4">
+                        <div className="p-2 bg-orange-100 rounded-lg">
+                            <Palette className="h-5 w-5 text-orange-600" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-lg">Report Branding</CardTitle>
+                            <p className="text-xs text-muted-foreground mt-0.5">Customize the look of your PDF reports</p>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                        {/* Logo upload */}
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Company Logo</label>
+                            <div className="flex items-center gap-4">
+                                {brandLogo ? (
+                                    <div className="w-16 h-16 rounded-lg border border-border bg-white p-2 flex items-center justify-center">
+                                        <img src={brandLogo} alt="Logo" className="max-w-full max-h-full object-contain" />
+                                    </div>
+                                ) : (
+                                    <div className="w-16 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center">
+                                        <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted/50 transition-colors">
+                                        <ImagePlus className="h-4 w-4" />
+                                        Upload Logo
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0]
+                                                if (file) {
+                                                    const reader = new FileReader()
+                                                    reader.onloadend = () => {
+                                                        const result = reader.result as string
+                                                        setBrandLogo(result)
+                                                        updateSettings({ brandLogo: result })
+                                                        setToast("Logo updated!")
+                                                    }
+                                                    reader.readAsDataURL(file)
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                    {brandLogo && (
+                                        <button
+                                            onClick={() => {
+                                                setBrandLogo(undefined)
+                                                updateSettings({ brandLogo: undefined })
+                                                setToast("Logo removed.")
+                                            }}
+                                            className="ml-2 text-xs text-red-500 hover:text-red-600"
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Business name */}
+                        <div>
+                            <label htmlFor="brand-name" className="block text-sm font-medium text-foreground mb-1.5">Business Name</label>
+                            <input
+                                id="brand-name"
+                                type="text"
+                                placeholder="e.g. Acme Digital Agency"
+                                value={brandName}
+                                onChange={(e) => setBrandName(e.target.value)}
+                                onBlur={() => updateSettings({ brandName: brandName || undefined })}
+                                className="w-full max-w-md px-4 py-2.5 border border-border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none bg-background text-foreground"
+                            />
+                        </div>
+
+                        {/* Brand color */}
+                        <div>
+                            <label htmlFor="brand-color" className="block text-sm font-medium text-foreground mb-1.5">Brand Color</label>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    id="brand-color"
+                                    type="color"
+                                    value={brandColor}
+                                    onChange={(e) => {
+                                        setBrandColor(e.target.value)
+                                        updateSettings({ brandColor: e.target.value })
+                                    }}
+                                    className="w-10 h-10 rounded-lg border border-border cursor-pointer"
+                                />
+                                <span className="text-sm text-muted-foreground font-mono">{brandColor}</span>
+                                <div className="flex-1 h-2 rounded-full" style={{ background: `linear-gradient(90deg, ${brandColor}, ${brandColor}44)` }} />
+                            </div>
+                        </div>
+
+                        {/* Preview */}
+                        <div className="p-4 rounded-xl border border-border bg-white">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-3">Report Header Preview</p>
+                            <div className="flex items-center gap-3">
+                                {brandLogo ? (
+                                    <img src={brandLogo} alt="Logo" className="h-8 w-auto object-contain" />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-md flex items-center justify-center text-white font-bold text-sm" style={{ background: brandColor }}>
+                                        {brandName.charAt(0) || "A"}
+                                    </div>
+                                )}
+                                <span className="font-semibold text-sm" style={{ color: brandColor }}>
+                                    {brandName || "Your Business Name"}
+                                </span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Google Integrations */}
             <Card className="shadow-sm border-zinc-200">

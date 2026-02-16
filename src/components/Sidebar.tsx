@@ -25,7 +25,8 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
-import { getSites, getAudits, getSettings } from "@/lib/local-storage"
+import { getSites, getAudits, getSettings, TIER_LIMITS } from "@/lib/local-storage"
+import type { UserTier } from "@/lib/local-storage"
 
 interface NavItem {
   href: string
@@ -37,7 +38,7 @@ interface NavItem {
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname()
-  const [settings, setSettings] = useState({ workspaceName: "AuditorPro", userName: "User" })
+  const [settings, setSettings] = useState<{ workspaceName: string; userName: string; tier: UserTier }>({ workspaceName: "AuditorPro", userName: "User", tier: "pro" })
   const [sitesCount, setSitesCount] = useState(0)
   const [auditsCount, setAuditsCount] = useState(0)
   const [mounted, setMounted] = useState(false)
@@ -94,7 +95,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
               <p className="text-xs font-semibold text-sidebar-foreground truncate">
                 {mounted ? settings.workspaceName : "AuditorPro"}
               </p>
-              <p className="text-[10px] text-sidebar-foreground/50">Pro Plan</p>
+              <p className="text-[10px] text-sidebar-foreground/50">{TIER_LIMITS[settings.tier]?.label ?? "Pro"} Plan</p>
             </div>
           </div>
           <ChevronDown className="h-3.5 w-3.5 text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70 transition-colors shrink-0" />
@@ -152,7 +153,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
             <p className="font-medium text-sidebar-foreground truncate">
               {mounted ? settings.userName : "User"}
             </p>
-            <p className="text-sidebar-foreground/50 text-xs">Pro Plan</p>
+            <p className="text-sidebar-foreground/50 text-xs">{TIER_LIMITS[settings.tier]?.label ?? "Pro"} Plan</p>
           </div>
         </Link>
       </div>

@@ -11,6 +11,8 @@ export interface StoredSite {
     url: string
     name: string
     status: "active" | "pending" | "error"
+    auditSchedule?: "manual" | "weekly" | "monthly"
+    lastScheduledAudit?: string
     createdAt: string
 }
 
@@ -61,10 +63,24 @@ export interface StoredFullCheck {
     learnMoreUrl?: string
 }
 
+export type UserTier = "free" | "starter" | "pro" | "agency"
+
+export const TIER_LIMITS: Record<UserTier, { sites: number; keywords: number; label: string; pdfBranding: boolean }> = {
+    free: { sites: 1, keywords: 5, label: "Free", pdfBranding: false },
+    starter: { sites: 3, keywords: 20, label: "Starter", pdfBranding: false },
+    pro: { sites: 5, keywords: 50, label: "Pro", pdfBranding: false },
+    agency: { sites: Infinity, keywords: Infinity, label: "Agency", pdfBranding: true },
+}
+
 export interface StoredSettings {
     userName: string
     userEmail: string
     workspaceName: string
+    tier: UserTier
+    // Branding (Agency tier)
+    brandLogo?: string       // base64 data-url
+    brandName?: string       // e.g. "Acme Digital Agency"
+    brandColor?: string      // hex, e.g. "#FF6B00"
     notifications: {
         auditComplete: boolean
         weeklyReport: boolean
@@ -177,7 +193,7 @@ export function addSite(url: string, name?: string): StoredSite {
     return site
 }
 
-export function updateSite(id: string, updates: Partial<Pick<StoredSite, "name" | "status">>): void {
+export function updateSite(id: string, updates: Partial<Pick<StoredSite, "name" | "status" | "auditSchedule" | "lastScheduledAudit">>): void {
     const sites = getSites().map((s) => (s.id === id ? { ...s, ...updates } : s))
     write(KEYS.sites, sites)
 }
@@ -257,6 +273,7 @@ const DEFAULT_SETTINGS: StoredSettings = {
     userName: "Jeremy Marcott",
     userEmail: "jeremy@theviablesource.com",
     workspaceName: "The Viable Source",
+    tier: "pro",
     notifications: {
         auditComplete: true,
         weeklyReport: true,
@@ -273,6 +290,27 @@ export function getSettings(): StoredSettings {
 export function updateSettings(updates: Partial<StoredSettings>): void {
     const current = getSettings()
     write(KEYS.settings, { ...current, ...updates })
+}
+
+// Tier helpers
+export function getTierLimits() {
+    const s = getSettings()
+    return TIER_LIMITS[s.tier]
+}
+
+export function canAddSite(): boolean {
+    const limits = getTierLimits()
+    return getSites().length < limits.sites
+}
+
+export function canAddKeyword(siteId: string): boolean {
+    const limits = getTierLimits()
+    const keywords = getKeywordsForSite(siteId)
+    return keywords.length < limits.keywords
+}
+
+export function isAgencyTier(): boolean {
+    return getSettings().tier === "agency"
 }
 
 // ============================================================================
