@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -22,8 +22,7 @@ import {
 } from "lucide-react"
 import { getAuditById, getSiteById, getComparableAudits, getSettings } from "@/lib/local-storage"
 import type { StoredAudit, StoredFullCategory, StoredFullCheck, StoredSettings } from "@/lib/local-storage"
-import ReportPreview from "@/components/ReportPreview"
-import { generatePdfFromElement } from "@/lib/pdf-report"
+import { generatePdfReport } from "@/lib/pdf-report"
 
 /* ------------------------------------------------------------------ */
 /*  Score ring                                                          */
@@ -188,7 +187,7 @@ export default function AuditDetailPage() {
     const [mounted, setMounted] = useState(false)
     const [generatingPdf, setGeneratingPdf] = useState(false)
     const [settings, setSettings] = useState<StoredSettings | null>(null)
-    const reportRef = useRef<HTMLDivElement>(null)
+
 
     useEffect(() => {
         const a = getAuditById(auditId)
@@ -204,11 +203,11 @@ export default function AuditDetailPage() {
     }, [auditId])
 
     const handleDownloadPdf = async () => {
-        if (!reportRef.current || !audit) return
+        if (!audit || !settings) return
         setGeneratingPdf(true)
         try {
             const filename = `${audit.domain.replace(/[^a-z0-9]/gi, "-")}-audit-${new Date(audit.createdAt).toISOString().split("T")[0]}`
-            await generatePdfFromElement(reportRef.current, filename)
+            await generatePdfReport(audit, settings, filename)
         } catch (err) {
             console.error("PDF generation failed:", err)
         } finally {
@@ -388,14 +387,7 @@ export default function AuditDetailPage() {
                     </div>
                 </div>
             )}
-            {/* Hidden PDF render target */}
-            {audit && settings && (
-                <ReportPreview
-                    audit={audit}
-                    settings={settings}
-                    containerRef={reportRef}
-                />
-            )}
+
         </div>
     )
 }
