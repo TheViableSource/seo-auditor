@@ -8,8 +8,10 @@ import { NextRequest, NextResponse } from "next/server"
 //   2. "grid"  — generates NxN grid points around a business
 //      location and checks rank at each point
 //
-// In production, replace simulation with real SERP API.
-// Set LOCAL_RANK_API_KEY in .env.local for real data.
+// Supported SERP providers (set via env vars):
+//   - DataForSEO (recommended): DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD
+//   - SerpAPI:                   SERPAPI_KEY
+//   - Fallback:                  Simulated data
 // ============================================================
 
 // Preset US cities with coordinates
@@ -88,32 +90,27 @@ function generateGridPoints(
 ): { row: number; col: number; lat: number; lng: number; distanceMi: number }[] {
     const points: { row: number; col: number; lat: number; lng: number; distanceMi: number }[] = []
     const half = Math.floor(gridSize / 2)
-    // Each step covers radiusMiles / half so edge points are at full radius
     const stepMi = half > 0 ? radiusMiles / half : 0
 
     for (let row = 0; row < gridSize; row++) {
         for (let col = 0; col < gridSize; col++) {
-            const rowOffset = row - half // -half to +half
+            const rowOffset = row - half
             const colOffset = col - half
 
             if (rowOffset === 0 && colOffset === 0) {
-                // Center point
                 points.push({ row, col, lat: centerLat, lng: centerLng, distanceMi: 0 })
                 continue
             }
 
-            // Move north/south (bearing 0/180) then east/west (bearing 90/270)
             const nsDistance = Math.abs(rowOffset) * stepMi
-            const nsBearing = rowOffset < 0 ? 0 : 180 // negative row = north
+            const nsBearing = rowOffset < 0 ? 0 : 180
             const ewDistance = Math.abs(colOffset) * stepMi
             const ewBearing = colOffset > 0 ? 90 : 270
 
-            // Step 1: move north/south from center
             const intermediate = rowOffset !== 0
                 ? offsetLatLng(centerLat, centerLng, nsDistance, nsBearing)
                 : { lat: centerLat, lng: centerLng }
 
-            // Step 2: from there move east/west
             const final = colOffset !== 0
                 ? offsetLatLng(intermediate.lat, intermediate.lng, ewDistance, ewBearing)
                 : intermediate
@@ -125,6 +122,251 @@ function generateGridPoints(
 
     return points
 }
+
+// ── Competitor type ──
+interface Competitor {
+    rank: number
+    name: string
+    domain: string
+    isClient: boolean
+}
+
+// ══════════════════════════════════════════════════════════════
+// LIVE SERP PROVIDERS
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * DataForSEO — Google Maps SERP API (Live mode)
+ * Docs: https://docs.dataforseo.com/v3/serp/google/maps/live/advanced/
+ * 
+ * Makes one API call per grid point. Each call returns the top
+ * local results at that lat/lng, from which we extract rank and
+ * competitor data for the client's domain.
+ */
+async function fetchDataForSEO(
+    keyword: string,
+    lat: number,
+    lng: number,
+    clientDomain: string,
+): Promise<{ rank: number | null; competitors: Competitor[] }> {
+    const login = process.env.DATAFORSEO_LOGIN!
+    const password = process.env.DATAFORSEO_PASSWORD!
+    const auth = Buffer.from(`${login}:${password}`).toString("base64")
+
+    const response = await fetch("https://api.dataforseo.com/v3/serp/google/maps/live/advanced", {
+        method: "POST",
+        headers: {
+            "Authorization": `Basic ${auth}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify([{
+            keyword,
+            location_coordinate: `${lat},${lng},15z`,   // lat,lng,zoom
+            language_code: "en",
+            device: "mobile",
+            os: "android",
+            depth: 20,                                      // top 20 results
+        }]),
+    })
+
+    const data = await response.json()
+
+    // Parse results
+    const items = data?.tasks?.[0]?.result?.[0]?.items || []
+    const competitors: Competitor[] = []
+    let clientRank: number | null = null
+
+    for (let i = 0; i < Math.min(items.length, 20); i++) {
+        const item = items[i]
+        if (item.type !== "maps_search") continue
+
+        const position = item.rank_absolute || (i + 1)
+        const title = item.title || "Unknown"
+        const domain = item.domain || item.url || ""
+        const cleanDomain = domain.replace(/^(https?:\/\/)?(www\.)?/, "").replace(/\/.*$/, "")
+
+        // Check if this is the client
+        const isClient = clientDomain && cleanDomain.toLowerCase().includes(clientDomain.toLowerCase())
+
+        if (isClient) {
+            clientRank = position
+        }
+
+        if (competitors.length < 4 || isClient) {
+            competitors.push({
+                rank: position,
+                name: isClient ? "You" : title,
+                domain: cleanDomain,
+                isClient: !!isClient,
+            })
+        }
+    }
+
+    // Ensure we always show client if found
+    if (clientRank && !competitors.find(c => c.isClient)) {
+        competitors.push({
+            rank: clientRank,
+            name: "You",
+            domain: clientDomain,
+            isClient: true,
+        })
+    }
+
+    // Keep top 4 + client
+    const top4 = competitors.filter(c => !c.isClient).slice(0, 4)
+    const clientEntry = competitors.find(c => c.isClient)
+    const finalCompetitors = clientEntry
+        ? [...top4.filter(c => c.rank < clientEntry.rank).slice(0, clientEntry.rank - 1),
+            clientEntry,
+        ...top4.filter(c => c.rank > clientEntry.rank)].slice(0, 5)
+        : top4.slice(0, 4)
+
+    return { rank: clientRank, competitors: finalCompetitors }
+}
+
+/**
+ * SerpAPI — Google Maps Results
+ * Docs: https://serpapi.com/google-maps-api
+ * 
+ * Uses the `ll` parameter for lat/lng targeting.
+ */
+async function fetchSerpAPI(
+    keyword: string,
+    lat: number,
+    lng: number,
+    clientDomain: string,
+): Promise<{ rank: number | null; competitors: Competitor[] }> {
+    const apiKey = process.env.SERPAPI_KEY!
+
+    const params = new URLSearchParams({
+        engine: "google_maps",
+        q: keyword,
+        ll: `@${lat},${lng},15z`,
+        type: "search",
+        api_key: apiKey,
+    })
+
+    const response = await fetch(`https://serpapi.com/search?${params}`)
+    const data = await response.json()
+
+    const items = data?.local_results || []
+    const competitors: Competitor[] = []
+    let clientRank: number | null = null
+
+    for (let i = 0; i < Math.min(items.length, 20); i++) {
+        const item = items[i]
+        const position = item.position || (i + 1)
+        const title = item.title || "Unknown"
+        const link = item.website || item.link || ""
+        const cleanDomain = link.replace(/^(https?:\/\/)?(www\.)?/, "").replace(/\/.*$/, "")
+
+        const isClient = clientDomain && cleanDomain.toLowerCase().includes(clientDomain.toLowerCase())
+
+        if (isClient) {
+            clientRank = position
+        }
+
+        if (competitors.length < 4 || isClient) {
+            competitors.push({
+                rank: position,
+                name: isClient ? "You" : title,
+                domain: cleanDomain,
+                isClient: !!isClient,
+            })
+        }
+    }
+
+    if (clientRank && !competitors.find(c => c.isClient)) {
+        competitors.push({
+            rank: clientRank,
+            name: "You",
+            domain: clientDomain,
+            isClient: true,
+        })
+    }
+
+    const top4 = competitors.filter(c => !c.isClient).slice(0, 4)
+    const clientEntry = competitors.find(c => c.isClient)
+    const finalCompetitors = clientEntry
+        ? [...top4.filter(c => c.rank < clientEntry.rank),
+            clientEntry,
+        ...top4.filter(c => c.rank > clientEntry.rank)].slice(0, 5)
+        : top4.slice(0, 4)
+
+    return { rank: clientRank, competitors: finalCompetitors }
+}
+
+/**
+ * Simulated fallback — generates deterministic fake data.
+ * Used when no API keys are configured.
+ */
+function fetchSimulated(
+    keyword: string,
+    lat: number,
+    lng: number,
+    distanceMi: number,
+    clientDomain: string,
+): { rank: number | null; competitors: Competitor[] } {
+    const FAKE_COMPETITORS = [
+        { name: "Joe's Coffee", domain: "joescoffee.com" },
+        { name: "Brew Brothers", domain: "brewbros.co" },
+        { name: "Morning Grind", domain: "morninggrind.com" },
+        { name: "Daily Drip", domain: "dailydrip.cafe" },
+        { name: "Bean Counter", domain: "beancounter.com" },
+        { name: "Perk Up", domain: "perkupcafe.com" },
+        { name: "Roast House", domain: "roasthouse.co" },
+        { name: "The Coffee Spot", domain: "thecoffeespot.com" },
+        { name: "Grind & Brew", domain: "grindandbrew.com" },
+        { name: "Cup of Joy", domain: "cupofjoy.cafe" },
+        { name: "Espresso Lane", domain: "espressolane.com" },
+        { name: "Rise & Grind", domain: "riseandgrind.co" },
+    ]
+
+    const hash = (keyword + lat.toFixed(3) + lng.toFixed(3))
+        .split("")
+        .reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)
+    const absHash = Math.abs(hash)
+
+    const distancePenalty = Math.floor(distanceMi * 1.5)
+    const baseRank = (absHash % 15) + 1
+    const adjustedRank = Math.min(baseRank + distancePenalty, 30)
+    const hasRank = absHash % 12 !== 0
+    const clientRank = hasRank ? adjustedRank : null
+
+    const top4: Competitor[] = []
+    const usedIndexes = new Set<number>()
+    for (let r = 1; r <= 4; r++) {
+        if (clientRank === r) {
+            top4.push({ rank: r, name: "You", domain: clientDomain, isClient: true })
+        } else {
+            const cHash = Math.abs((hash + r * 7919) % FAKE_COMPETITORS.length)
+            let idx = cHash
+            while (usedIndexes.has(idx)) idx = (idx + 1) % FAKE_COMPETITORS.length
+            usedIndexes.add(idx)
+            top4.push({ rank: r, name: FAKE_COMPETITORS[idx].name, domain: FAKE_COMPETITORS[idx].domain, isClient: false })
+        }
+    }
+    if (clientRank && clientRank > 4) {
+        top4.push({ rank: clientRank, name: "You", domain: clientDomain, isClient: true })
+    }
+
+    return { rank: clientRank, competitors: top4 }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Detect which provider to use
+// ══════════════════════════════════════════════════════════════
+type Provider = "dataforseo" | "serpapi" | "simulated"
+
+function detectProvider(): Provider {
+    if (process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) return "dataforseo"
+    if (process.env.SERPAPI_KEY) return "serpapi"
+    return "simulated"
+}
+
+// ══════════════════════════════════════════════════════════════
+// POST handler
+// ══════════════════════════════════════════════════════════════
 
 export async function POST(request: NextRequest) {
     try {
@@ -145,73 +387,50 @@ export async function POST(request: NextRequest) {
 
             const clampedSize = Math.min(Math.max(gridSize, 3), 9)
             const clampedRadius = Math.min(Math.max(radiusMiles, 0.5), 50)
-
             const points = generateGridPoints(centerLat, centerLng, clampedSize, clampedRadius)
+            const provider = detectProvider()
 
-            // TODO: Replace with real SERP API calls per grid point
-            // const apiKey = process.env.LOCAL_RANK_API_KEY
-            // if (apiKey) { ... }
-
-            // Simulated competitor names pool
-            const COMPETITORS = [
-                { name: "Joe's Coffee", domain: "joescoffee.com" },
-                { name: "Brew Brothers", domain: "brewbros.co" },
-                { name: "Morning Grind", domain: "morninggrind.com" },
-                { name: "Daily Drip", domain: "dailydrip.cafe" },
-                { name: "Bean Counter", domain: "beancounter.com" },
-                { name: "Perk Up", domain: "perkupcafe.com" },
-                { name: "Roast House", domain: "roasthouse.co" },
-                { name: "The Coffee Spot", domain: "thecoffeespot.com" },
-                { name: "Grind & Brew", domain: "grindandbrew.com" },
-                { name: "Cup of Joy", domain: "cupofjoy.cafe" },
-                { name: "Espresso Lane", domain: "espressolane.com" },
-                { name: "Rise & Grind", domain: "riseandgrind.co" },
-            ]
-
-            // Extract client domain from URL for labeling
+            // Extract client domain
             let clientDomain = "your-site.com"
-            try { clientDomain = new URL(url.startsWith("http") ? url : `https://${url}`).hostname } catch { /* ignore */ }
+            try { clientDomain = new URL(url.startsWith("http") ? url : `https://${url}`).hostname.replace(/^www\./, "") } catch { /* ignore */ }
 
-            // Simulated — deterministic hash-based
-            const gridResults = points.map((pt) => {
-                const hash = (keyword + pt.lat.toFixed(3) + pt.lng.toFixed(3))
-                    .split("")
-                    .reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)
-                const absHash = Math.abs(hash)
+            // Fetch rank data for each grid point
+            let gridResults
 
-                // Ranks tend to be better near center (lower distance)
-                const distancePenalty = Math.floor(pt.distanceMi * 1.5)
-                const baseRank = (absHash % 15) + 1
-                const adjustedRank = Math.min(baseRank + distancePenalty, 30)
-                const hasRank = absHash % 12 !== 0 // ~92% chance
-                const clientRank = hasRank ? adjustedRank : null
-
-                // Generate top 4 competitors at this location
-                const top4: { rank: number; name: string; domain: string; isClient: boolean }[] = []
-                const usedIndexes = new Set<number>()
-                for (let r = 1; r <= 4; r++) {
-                    if (clientRank === r) {
-                        top4.push({ rank: r, name: "You", domain: clientDomain, isClient: true })
-                    } else {
-                        // Pick a deterministic competitor
-                        const cHash = Math.abs((hash + r * 7919) % COMPETITORS.length)
-                        let idx = cHash
-                        while (usedIndexes.has(idx)) idx = (idx + 1) % COMPETITORS.length
-                        usedIndexes.add(idx)
-                        top4.push({ rank: r, name: COMPETITORS[idx].name, domain: COMPETITORS[idx].domain, isClient: false })
+            if (provider === "dataforseo") {
+                // Parallel fetch — DataForSEO allows concurrent requests
+                gridResults = await Promise.all(
+                    points.map(async (pt) => {
+                        try {
+                            const { rank, competitors } = await fetchDataForSEO(keyword, pt.lat, pt.lng, clientDomain)
+                            return { ...pt, rank, competitors }
+                        } catch (err) {
+                            console.error(`DataForSEO error at (${pt.lat}, ${pt.lng}):`, err)
+                            return { ...pt, rank: null, competitors: [] }
+                        }
+                    })
+                )
+            } else if (provider === "serpapi") {
+                // Sequential with small delay to respect rate limits
+                gridResults = []
+                for (const pt of points) {
+                    try {
+                        const { rank, competitors } = await fetchSerpAPI(keyword, pt.lat, pt.lng, clientDomain)
+                        gridResults.push({ ...pt, rank, competitors })
+                    } catch (err) {
+                        console.error(`SerpAPI error at (${pt.lat}, ${pt.lng}):`, err)
+                        gridResults.push({ ...pt, rank: null, competitors: [] })
                     }
+                    // Small delay between requests
+                    await new Promise(r => setTimeout(r, 200))
                 }
-                // If client ranks outside top 4 but has a rank, add them as a 5th entry
-                if (clientRank && clientRank > 4) {
-                    top4.push({ rank: clientRank, name: "You", domain: clientDomain, isClient: true })
-                }
-
-                return {
-                    ...pt,
-                    rank: clientRank,
-                    competitors: top4,
-                }
-            })
+            } else {
+                // Simulated fallback
+                gridResults = points.map((pt) => {
+                    const { rank, competitors } = fetchSimulated(keyword, pt.lat, pt.lng, pt.distanceMi, clientDomain)
+                    return { ...pt, rank, competitors }
+                })
+            }
 
             return NextResponse.json({
                 mode: "grid",
@@ -220,8 +439,11 @@ export async function POST(request: NextRequest) {
                 radiusMiles: clampedRadius,
                 keyword,
                 url,
-                simulated: true,
-                message: "Set LOCAL_RANK_API_KEY in .env.local for real SERP data",
+                provider,
+                simulated: provider === "simulated",
+                ...(provider === "simulated" ? {
+                    message: "⚠️ Using simulated data. Set DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD or SERPAPI_KEY in .env.local for live SERP data.",
+                } : {}),
             })
         }
 
@@ -249,7 +471,7 @@ export async function POST(request: NextRequest) {
             keyword,
             url,
             simulated: true,
-            message: "Set LOCAL_RANK_API_KEY in .env.local for real SERP data",
+            message: "Set DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD or SERPAPI_KEY in .env.local for real SERP data",
         })
     } catch (error) {
         console.error("Local rank check error:", error)
@@ -257,9 +479,12 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// GET — return available cities
+// GET — return available cities + current provider status
 export async function GET() {
+    const provider = detectProvider()
     return NextResponse.json({
         cities: US_CITIES.map(c => ({ ...c, location: `${c.city}, ${c.state}` })),
+        provider,
+        configured: provider !== "simulated",
     })
 }

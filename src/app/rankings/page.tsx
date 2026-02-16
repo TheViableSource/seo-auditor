@@ -253,6 +253,7 @@ export default function RankingsPage() {
     const [gridSize, setGridSize] = useState(5)
     const [radiusMiles, setRadiusMiles] = useState(5)
     const [gridResults, setGridResults] = useState<GridPoint[]>([])
+    const [gridProvider, setGridProvider] = useState<string>("")
 
     // Business address state
     const [businessAddress, setBusinessAddress] = useState("")
@@ -1182,6 +1183,7 @@ export default function RankingsPage() {
                                                 const data = await res.json()
                                                 if (data.gridResults) {
                                                     setGridResults(data.gridResults)
+                                                    setGridProvider(data.provider || "simulated")
                                                 }
                                             } catch {
                                                 // handle error silently
@@ -1206,7 +1208,15 @@ export default function RankingsPage() {
                             {gridResults.length > 0 && businessLocation && (
                                 <Card className="shadow-sm border-zinc-200">
                                     <CardHeader className="pb-2">
-                                        <CardTitle className="text-base">Local Rank Grid</CardTitle>
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-base">Local Rank Grid</CardTitle>
+                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${gridProvider === "simulated"
+                                                    ? "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400"
+                                                    : "bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400"
+                                                }`}>
+                                                {gridProvider === "simulated" ? "⚠ Simulated" : `✓ Live · ${gridProvider}`}
+                                            </span>
+                                        </div>
                                     </CardHeader>
                                     <CardContent>
                                         <RankGrid
