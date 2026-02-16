@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/sheet"
 import { getSites, getAudits, getSettings, TIER_LIMITS } from "@/lib/local-storage"
 import type { UserTier } from "@/lib/local-storage"
+import { NotificationBell } from "@/components/NotificationPanel"
 
 interface NavItem {
   href: string
@@ -93,19 +94,21 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
     { href: "/serp-simulator", label: "SERP Simulator", icon: Monitor },
     { href: "/schema-generator", label: "Schema Generator", icon: Code },
     { href: "/rankings", label: "Rankings", icon: BarChart3 },
+    { href: "/widget", label: "Widgets", icon: Code },
     { href: "/settings", label: "Settings", icon: Settings },
   ]
 
   return (
     <>
-      {/* Logo */}
-      <div className="p-6">
+      {/* Logo + Notifications */}
+      <div className="p-6 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2 group">
           <Search className="w-6 h-6 text-sidebar-primary group-hover:scale-110 transition-transform" aria-hidden="true" />
           <h1 className="text-2xl font-bold text-sidebar-primary">
             Auditor<span className="text-sidebar-foreground">Pro</span>
           </h1>
         </Link>
+        <NotificationBell />
       </div>
 
       {/* Workspace Switcher */}

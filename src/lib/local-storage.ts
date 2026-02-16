@@ -567,3 +567,67 @@ export function getRankHistory(keywordId: string, limit = 30): StoredRankSnapsho
         .sort((a, b) => new Date(a.checkedAt).getTime() - new Date(b.checkedAt).getTime())
         .slice(-limit)
 }
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+const NOTIFICATIONS_KEY = "auditor:notifications"
+
+export type NotificationType = "audit_complete" | "audit_error" | "site_added" | "site_removed" | "score_drop" | "info"
+
+export interface AppNotification {
+    id: string
+    type: NotificationType
+    title: string
+    message: string
+    read: boolean
+    createdAt: string
+    meta?: Record<string, unknown>
+}
+
+export function getNotifications(limit = 50): AppNotification[] {
+    try {
+        const raw = localStorage.getItem(NOTIFICATIONS_KEY)
+        const items: AppNotification[] = raw ? JSON.parse(raw) : []
+        return items
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, limit)
+    } catch {
+        return []
+    }
+}
+
+export function addNotification(type: NotificationType, title: string, message: string, meta?: Record<string, unknown>): void {
+    const items = getNotifications(200)
+    const notif: AppNotification = {
+        id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        type,
+        title,
+        message,
+        read: false,
+        createdAt: new Date().toISOString(),
+        meta,
+    }
+    items.unshift(notif)
+    // Keep max 100 notifications
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(items.slice(0, 100)))
+    window.dispatchEvent(new Event("auditor:notifications"))
+}
+
+export function markAllNotificationsRead(): void {
+    const items = getNotifications(200)
+    for (const item of items) item.read = true
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(items))
+    window.dispatchEvent(new Event("auditor:notifications"))
+}
+
+export function clearNotifications(): void {
+    localStorage.removeItem(NOTIFICATIONS_KEY)
+    window.dispatchEvent(new Event("auditor:notifications"))
+}
+
+export function getUnreadNotificationCount(): number {
+    return getNotifications().filter(n => !n.read).length
+}
+

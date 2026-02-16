@@ -45,7 +45,7 @@ import {
 import { Progress } from "@/components/ui/progress"
 import type { AuditResult, AuditCategory, AuditCheck, CheckStatus, ContentAnalysisData, PageResourcesData, SocialPreviewData } from "@/lib/types"
 import { AuditResultsSkeleton } from "@/components/AuditResultsSkeleton"
-import { saveAudit } from "@/lib/local-storage"
+import { saveAudit, addNotification } from "@/lib/local-storage"
 import { canUseAi, getAiRemaining, incrementAiUsage, AI_TIER_LIMITS } from "@/lib/ai-usage"
 import { getSettings } from "@/lib/local-storage"
 import { useToast } from "@/components/ui/toast-provider"
@@ -712,6 +712,7 @@ export default function Home() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to audit this site. Please check the URL and try again.")
       globalToast.error("Audit failed — check the URL and try again")
+      addNotification("audit_error", "Audit Failed", `Could not audit ${url}`)
     } finally {
       setLoading(false)
       setAuditProgress(null)
@@ -745,6 +746,7 @@ export default function Home() {
       saveAudit(url, data.score, issuesCount, categorySummary, failedChecks, data.categories || [])
       window.dispatchEvent(new Event("auditor:update"))
       globalToast.success(`Audit complete — Score: ${data.score}/100`)
+      addNotification("audit_complete", "Audit Complete", `${url} scored ${data.score}/100`)
     } catch (e) {
       console.warn("Failed to save audit to localStorage:", e)
     }
