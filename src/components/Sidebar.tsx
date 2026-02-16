@@ -14,6 +14,7 @@ import {
   Globe,
   ChevronDown,
   History,
+  GitCompareArrows,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -64,8 +65,9 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
     { href: "/", label: "Quick Audit", icon: FileText },
     { href: "/sites", label: "Sites", icon: Globe, badge: mounted ? sitesCount : undefined },
     { href: "/audits", label: "Audit History", icon: History, badge: mounted ? auditsCount : undefined },
+    { href: "/compare", label: "Compare", icon: GitCompareArrows },
     { href: "/serp-simulator", label: "SERP Simulator", icon: Monitor },
-    { href: "#", label: "Rankings", icon: BarChart3, disabled: true },
+    { href: "/rankings", label: "Rankings", icon: BarChart3 },
     { href: "/settings", label: "Settings", icon: Settings },
   ]
 

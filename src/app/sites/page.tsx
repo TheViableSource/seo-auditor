@@ -256,7 +256,9 @@ export default function SitesPage() {
                                         {site.domain.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <h3 className="font-bold text-lg text-foreground truncate">{site.name}</h3>
+                                        <Link href={`/sites/${site.id}`} className="hover:text-orange-500 transition-colors">
+                                            <h3 className="font-bold text-lg text-foreground truncate">{site.name}</h3>
+                                        </Link>
                                         <div className="flex items-center gap-2 mt-0.5">
                                             <a
                                                 href={site.url}
@@ -307,6 +309,12 @@ export default function SitesPage() {
                                 </div>
 
                                 <div className="flex gap-2">
+                                    <Link href={`/sites/${site.id}`}>
+                                        <Button size="sm" variant="outline" className="gap-1.5">
+                                            <Globe className="h-3.5 w-3.5" />
+                                            Details
+                                        </Button>
+                                    </Link>
                                     <Link href={`/?url=${encodeURIComponent(site.url)}`}>
                                         <Button size="sm" className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white">
                                             <Zap className="h-3.5 w-3.5" />

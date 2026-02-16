@@ -50,3 +50,6 @@ next-env.d.ts
 .firebase/
 
 /src/generated/prisma
+
+# Google OAuth tokens (never commit)
+.gsc-tokens.json

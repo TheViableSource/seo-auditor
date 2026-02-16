@@ -204,7 +204,7 @@ export default function AuditsPage() {
                                     </thead>
                                     <tbody className="divide-y divide-border">
                                         {filtered.map((audit) => (
-                                            <tr key={audit.id} className="hover:bg-muted/30 transition-colors">
+                                            <tr key={audit.id} className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => window.location.href = `/audits/${audit.id}`}>
                                                 <td className="py-3 px-4">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-6 h-6 rounded bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-[10px] shrink-0">
@@ -230,8 +230,8 @@ export default function AuditsPage() {
                                                             <span
                                                                 key={cat.name}
                                                                 className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${cat.score >= 80 ? "bg-green-50 text-green-700" :
-                                                                        cat.score >= 60 ? "bg-orange-50 text-orange-700" :
-                                                                            "bg-red-50 text-red-700"
+                                                                    cat.score >= 60 ? "bg-orange-50 text-orange-700" :
+                                                                        "bg-red-50 text-red-700"
                                                                     }`}
                                                             >
                                                                 {cat.label.split(" ")[0]} {cat.score}
@@ -247,13 +247,20 @@ export default function AuditsPage() {
                                                 <td className="py-3 px-4 text-sm text-muted-foreground whitespace-nowrap">
                                                     {new Date(audit.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                                                 </td>
-                                                <td className="py-3 px-4 text-right">
-                                                    <Link href={`/?url=${encodeURIComponent(audit.url)}`}>
-                                                        <Button size="sm" variant="ghost" className="text-orange-500 hover:text-orange-600 gap-1 text-xs">
-                                                            <Clock className="h-3 w-3" />
-                                                            Re-audit
-                                                        </Button>
-                                                    </Link>
+                                                <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex items-center gap-1 justify-end">
+                                                        <Link href={`/audits/${audit.id}`}>
+                                                            <Button size="sm" variant="ghost" className="text-blue-500 hover:text-blue-600 gap-1 text-xs">
+                                                                View
+                                                            </Button>
+                                                        </Link>
+                                                        <Link href={`/?url=${encodeURIComponent(audit.url)}`}>
+                                                            <Button size="sm" variant="ghost" className="text-orange-500 hover:text-orange-600 gap-1 text-xs">
+                                                                <Clock className="h-3 w-3" />
+                                                                Re-audit
+                                                            </Button>
+                                                        </Link>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}

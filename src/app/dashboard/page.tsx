@@ -7,6 +7,7 @@ import {
     Globe,
     FileSearch,
     TrendingUp,
+    TrendingDown,
     AlertTriangle,
     ArrowUpRight,
     ArrowDownRight,
@@ -15,6 +16,11 @@ import {
     Zap,
     Clock,
     Inbox,
+    Search,
+    Target,
+    Minus,
+    BarChart3,
+    CheckCircle2,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -23,8 +29,14 @@ import {
     getDashboardStats,
     getScoreTrend,
     getLatestAuditForSite,
+    getQuickWins,
+    getKeywords,
+    getCompetitors,
     type StoredSite,
     type StoredAudit,
+    type QuickWin,
+    type StoredKeyword,
+    type StoredCompetitor,
 } from "@/lib/local-storage"
 
 function ScoreBadge({ score }: { score: number }) {
@@ -73,15 +85,24 @@ function EmptyDashboard() {
 export default function DashboardPage() {
     const [sites, setSites] = useState<StoredSite[]>([])
     const [audits, setAudits] = useState<StoredAudit[]>([])
+    const [quickWins, setQuickWins] = useState<QuickWin[]>([])
     const [stats, setStats] = useState({ totalSites: 0, totalAudits: 0, avgScore: 0, totalIssues: 0, scoreChange: 0 })
     const [trend, setTrend] = useState<{ date: string; score: number }[]>([])
+    const [topKeywords, setTopKeywords] = useState<StoredKeyword[]>([])
+    const [topCompetitors, setTopCompetitors] = useState<StoredCompetitor[]>([])
     const [mounted, setMounted] = useState(false)
 
     const load = useCallback(() => {
         setSites(getSites())
         setAudits(getRecentAudits(10))
+        setQuickWins(getQuickWins(5))
         setStats(getDashboardStats())
         setTrend(getScoreTrend(7))
+        // Load top keywords and competitors
+        const allKw = getKeywords()
+        setTopKeywords(allKw.filter((k) => k.currentRank != null).sort((a, b) => (a.currentRank ?? 999) - (b.currentRank ?? 999)).slice(0, 5))
+        const allComp = getCompetitors()
+        setTopCompetitors(allComp.filter((c) => c.latestScore != null).slice(0, 5))
     }, [])
 
     useEffect(() => {
@@ -254,26 +275,28 @@ export default function DashboardPage() {
                     <CardContent className="space-y-3">
                         {sitesWithScores.length > 0 ? (
                             sitesWithScores.slice(0, 5).map((site) => (
-                                <div key={site.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
-                                            {site.domain.charAt(0).toUpperCase()}
+                                <Link key={site.id} href={`/sites/${site.id}`} className="block">
+                                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                                                {site.domain.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-medium text-sm text-foreground truncate">{site.name}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {site.lastDate
+                                                        ? `Last: ${new Date(site.lastDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                                                        : "No audits yet"}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className="min-w-0">
-                                            <p className="font-medium text-sm text-foreground truncate">{site.name}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {site.lastDate
-                                                    ? `Last: ${new Date(site.lastDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                                                    : "No audits yet"}
-                                            </p>
-                                        </div>
+                                        {site.lastScore ? (
+                                            <ScoreBadge score={site.lastScore} />
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground italic">Pending</span>
+                                        )}
                                     </div>
-                                    {site.lastScore ? (
-                                        <ScoreBadge score={site.lastScore} />
-                                    ) : (
-                                        <span className="text-xs text-muted-foreground italic">Pending</span>
-                                    )}
-                                </div>
+                                </Link>
                             ))
                         ) : (
                             <div className="text-center py-6 text-muted-foreground text-sm">
@@ -284,6 +307,37 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Quick Wins */}
+            {quickWins.length > 0 && (
+                <Card className="shadow-sm border-zinc-200">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                            <Zap className="h-5 w-5 text-orange-500" /> Quick Wins
+                        </CardTitle>
+                        <span className="text-xs text-muted-foreground">{quickWins.length} actionable fixes</span>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {quickWins.map((win, i) => (
+                            <Link key={i} href={`/sites/${win.siteId}`} className="block">
+                                <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
+                                    <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${win.check.status === "fail" ? "bg-red-500" : "bg-yellow-500"}`} />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <p className="font-medium text-sm">{win.check.title}</p>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{win.check.categoryLabel}</span>
+                                            <span className="text-[10px] text-orange-500 font-medium">{win.domain}</span>
+                                        </div>
+                                        {win.check.recommendation && (
+                                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{win.check.recommendation}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Recent Audits Table */}
             {audits.length > 0 && (
@@ -311,7 +365,7 @@ export default function DashboardPage() {
                                 </thead>
                                 <tbody className="divide-y divide-border">
                                     {audits.map((audit) => (
-                                        <tr key={audit.id} className="hover:bg-muted/30 transition-colors">
+                                        <tr key={audit.id} className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => window.location.href = `/audits/${audit.id}`}>
                                             <td className="py-3 px-4">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-6 h-6 rounded bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-[10px] shrink-0">
@@ -334,7 +388,7 @@ export default function DashboardPage() {
                                             <td className="py-3 px-4 text-sm text-muted-foreground whitespace-nowrap">
                                                 {new Date(audit.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                                             </td>
-                                            <td className="py-3 px-4 text-right">
+                                            <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                                                 <Link href={`/?url=${encodeURIComponent(audit.url)}`}>
                                                     <Button size="sm" variant="ghost" className="text-orange-500 hover:text-orange-600 gap-1 text-xs">
                                                         <Clock className="h-3 w-3" />
@@ -349,6 +403,80 @@ export default function DashboardPage() {
                         </div>
                     </CardContent>
                 </Card>
+            )}
+
+            {/* Rankings & Competitors Widgets */}
+            {mounted && (topKeywords.length > 0 || topCompetitors.length > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Keyword Rankings Widget */}
+                    {topKeywords.length > 0 && (
+                        <Card className="shadow-sm border-zinc-200">
+                            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <Search className="h-4 w-4 text-blue-500" />
+                                    Keyword Rankings
+                                </CardTitle>
+                                <Link href="/rankings" className="text-xs text-orange-500 hover:underline flex items-center gap-0.5">
+                                    View all <ArrowRight className="w-3 h-3" />
+                                </Link>
+                            </CardHeader>
+                            <CardContent className="p-0 px-4 pb-4">
+                                <div className="space-y-2">
+                                    {topKeywords.map((kw) => (
+                                        <div key={kw.id} className="flex items-center justify-between text-sm py-1">
+                                            <span className="truncate flex-1 mr-3">{kw.keyword}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs ${(kw.currentRank ?? 999) <= 3 ? "bg-green-100 text-green-700" :
+                                                    (kw.currentRank ?? 999) <= 10 ? "bg-blue-100 text-blue-700" :
+                                                        (kw.currentRank ?? 999) <= 30 ? "bg-orange-100 text-orange-700" :
+                                                            "bg-red-100 text-red-700"
+                                                    }`}>
+                                                    {kw.currentRank}
+                                                </span>
+                                                {kw.previousRank != null && kw.currentRank != null && (() => {
+                                                    const diff = kw.previousRank - kw.currentRank
+                                                    if (diff === 0) return <Minus className="w-3 h-3 text-muted-foreground" />
+                                                    if (diff > 0) return <TrendingUp className="w-3 h-3 text-green-600" />
+                                                    return <TrendingDown className="w-3 h-3 text-red-600" />
+                                                })()}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Competitor Summary Widget */}
+                    {topCompetitors.length > 0 && (
+                        <Card className="shadow-sm border-zinc-200">
+                            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <Target className="h-4 w-4 text-orange-500" />
+                                    Competitor Scores
+                                </CardTitle>
+                                <Link href="/rankings" className="text-xs text-orange-500 hover:underline flex items-center gap-0.5">
+                                    View all <ArrowRight className="w-3 h-3" />
+                                </Link>
+                            </CardHeader>
+                            <CardContent className="p-0 px-4 pb-4">
+                                <div className="space-y-2">
+                                    {topCompetitors.map((comp) => (
+                                        <div key={comp.id} className="flex items-center justify-between text-sm py-1">
+                                            <span className="truncate flex-1 mr-3">{comp.name}</span>
+                                            <span className={`font-bold text-sm ${(comp.latestScore ?? 0) >= 80 ? "text-green-600" :
+                                                (comp.latestScore ?? 0) >= 60 ? "text-orange-600" :
+                                                    "text-red-600"
+                                                }`}>
+                                                {comp.latestScore}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
             )}
 
             {/* Score Legend */}

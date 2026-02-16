@@ -14,6 +14,15 @@ export interface StoredSite {
     createdAt: string
 }
 
+export interface StoredCheck {
+    title: string
+    status: "pass" | "fail" | "warning" | "info"
+    description: string
+    recommendation?: string
+    category: string
+    categoryLabel: string
+}
+
 export interface StoredAudit {
     id: string
     siteId: string
@@ -22,7 +31,34 @@ export interface StoredAudit {
     score: number
     issuesCount: number
     categorySummary: { name: string; label: string; score: number; total: number; passed: number }[]
+    failedChecks: StoredCheck[]
+    fullCategories?: StoredFullCategory[]
     createdAt: string
+}
+
+/** Full category data — stores every check so past audits can be viewed in detail */
+export interface StoredFullCategory {
+    name: string
+    label: string
+    score: number
+    checks: StoredFullCheck[]
+    passCount: number
+    failCount: number
+    warningCount: number
+}
+
+export interface StoredFullCheck {
+    id: string
+    title: string
+    description: string
+    status: "pass" | "fail" | "warning" | "info"
+    severity: "critical" | "major" | "minor" | "info"
+    value?: string | number | null
+    expected?: string | number | null
+    details?: string
+    recommendation?: string
+    codeSnippet?: string
+    learnMoreUrl?: string
 }
 
 export interface StoredSettings {
@@ -38,6 +74,35 @@ export interface StoredSettings {
     }
 }
 
+export interface StoredCompetitor {
+    id: string
+    siteId: string
+    url: string
+    domain: string
+    name: string
+    latestScore?: number
+    latestCategories?: { name: string; label: string; score: number }[]
+    createdAt: string
+}
+
+export interface StoredKeyword {
+    id: string
+    siteId: string
+    keyword: string
+    currentRank?: number | null
+    previousRank?: number | null
+    lastChecked?: string
+    createdAt: string
+}
+
+export interface StoredRankSnapshot {
+    id: string
+    keywordId: string
+    siteId: string
+    rank: number | null
+    checkedAt: string
+}
+
 // ============================================================================
 // KEYS
 // ============================================================================
@@ -46,6 +111,9 @@ const KEYS = {
     sites: "auditor:sites",
     audits: "auditor:audits",
     settings: "auditor:settings",
+    competitors: "auditor:competitors",
+    keywords: "auditor:keywords",
+    ranks: "auditor:ranks",
 } as const
 
 // ============================================================================
@@ -140,11 +208,17 @@ export function getLatestAuditForSite(siteId: string): StoredAudit | undefined {
     return audits.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
 }
 
+export function getAuditById(id: string): StoredAudit | undefined {
+    return getAudits().find((a) => a.id === id)
+}
+
 export function saveAudit(
     url: string,
     score: number,
     issuesCount: number,
-    categorySummary: StoredAudit["categorySummary"]
+    categorySummary: StoredAudit["categorySummary"],
+    failedChecks: StoredCheck[] = [],
+    fullCategories?: StoredFullCategory[]
 ): StoredAudit {
     const parsed = new URL(url.startsWith("http") ? url : `https://${url}`)
     const domain = parsed.hostname.replace(/^www\./, "")
@@ -160,6 +234,8 @@ export function saveAudit(
         score,
         issuesCount,
         categorySummary,
+        failedChecks,
+        fullCategories,
         createdAt: new Date().toISOString(),
     }
 
@@ -242,6 +318,64 @@ export function getScoreTrend(limit = 7): { date: string; score: number }[] {
         }))
 }
 
+export function getScoreTrendForSite(siteId: string, limit = 10): { date: string; score: number; id: string }[] {
+    return getAuditsForSite(siteId)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        .slice(-limit)
+        .map((a) => ({
+            date: new Date(a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            score: a.score,
+            id: a.id,
+        }))
+}
+
+// ============================================================================
+// QUICK WINS
+// ============================================================================
+
+export interface QuickWin {
+    check: StoredCheck
+    domain: string
+    siteId: string
+    auditDate: string
+    url: string
+}
+
+export function getQuickWins(limit = 5): QuickWin[] {
+    const sites = getSites()
+    const wins: QuickWin[] = []
+
+    for (const site of sites) {
+        const latest = getLatestAuditForSite(site.id)
+        if (!latest || !latest.failedChecks) continue
+
+        for (const check of latest.failedChecks) {
+            if (check.status === "fail" && check.recommendation) {
+                wins.push({
+                    check,
+                    domain: site.domain,
+                    siteId: site.id,
+                    auditDate: latest.createdAt,
+                    url: latest.url,
+                })
+            }
+        }
+    }
+
+    // Prioritize by severity: warn checks first, then fail
+    return wins.slice(0, limit)
+}
+
+// ============================================================================
+// COMPARISON
+// ============================================================================
+
+export function getComparableAudits(siteId: string): StoredAudit[] {
+    return getAuditsForSite(siteId).filter(
+        (a) => a.fullCategories && a.fullCategories.length > 0
+    )
+}
+
 // ============================================================================
 // EXPORT / IMPORT
 // ============================================================================
@@ -251,6 +385,9 @@ export function exportAllData(): string {
         sites: getSites(),
         audits: getAudits(),
         settings: getSettings(),
+        competitors: getCompetitors(),
+        keywords: getKeywords(),
+        ranks: getRanks(),
         exportedAt: new Date().toISOString(),
     }, null, 2)
 }
@@ -260,8 +397,124 @@ export function importData(json: string): { sites: number; audits: number } {
     if (data.sites) write(KEYS.sites, data.sites)
     if (data.audits) write(KEYS.audits, data.audits)
     if (data.settings) write(KEYS.settings, data.settings)
+    if (data.competitors) write(KEYS.competitors, data.competitors)
+    if (data.keywords) write(KEYS.keywords, data.keywords)
+    if (data.ranks) write(KEYS.ranks, data.ranks)
     return {
         sites: (data.sites || []).length,
         audits: (data.audits || []).length,
     }
+}
+
+// ============================================================================
+// COMPETITORS
+// ============================================================================
+
+export function getCompetitors(): StoredCompetitor[] {
+    return read<StoredCompetitor[]>(KEYS.competitors, [])
+}
+
+export function getCompetitorsForSite(siteId: string): StoredCompetitor[] {
+    return getCompetitors().filter((c) => c.siteId === siteId)
+}
+
+export function addCompetitor(siteId: string, url: string, name?: string): StoredCompetitor {
+    const competitors = getCompetitors()
+    let domain: string
+    try { domain = new URL(url).hostname.replace(/^www\./, "") } catch { domain = url }
+    const comp: StoredCompetitor = {
+        id: genId(),
+        siteId,
+        url: url.startsWith("http") ? url : `https://${url}`,
+        domain,
+        name: name || domain,
+        createdAt: new Date().toISOString(),
+    }
+    competitors.push(comp)
+    write(KEYS.competitors, competitors)
+    return comp
+}
+
+export function updateCompetitor(id: string, updates: Partial<Pick<StoredCompetitor, "name" | "latestScore" | "latestCategories">>): void {
+    const competitors = getCompetitors()
+    const idx = competitors.findIndex((c) => c.id === id)
+    if (idx >= 0) {
+        competitors[idx] = { ...competitors[idx], ...updates }
+        write(KEYS.competitors, competitors)
+    }
+}
+
+export function removeCompetitor(id: string): void {
+    write(KEYS.competitors, getCompetitors().filter((c) => c.id !== id))
+}
+
+// ============================================================================
+// KEYWORDS
+// ============================================================================
+
+export function getKeywords(): StoredKeyword[] {
+    return read<StoredKeyword[]>(KEYS.keywords, [])
+}
+
+export function getKeywordsForSite(siteId: string): StoredKeyword[] {
+    return getKeywords().filter((k) => k.siteId === siteId)
+}
+
+export function addKeyword(siteId: string, keyword: string): StoredKeyword {
+    const keywords = getKeywords()
+    const kw: StoredKeyword = {
+        id: genId(),
+        siteId,
+        keyword: keyword.trim().toLowerCase(),
+        createdAt: new Date().toISOString(),
+    }
+    keywords.push(kw)
+    write(KEYS.keywords, keywords)
+    return kw
+}
+
+export function updateKeywordRank(id: string, rank: number | null): void {
+    const keywords = getKeywords()
+    const idx = keywords.findIndex((k) => k.id === id)
+    if (idx >= 0) {
+        keywords[idx].previousRank = keywords[idx].currentRank ?? null
+        keywords[idx].currentRank = rank
+        keywords[idx].lastChecked = new Date().toISOString()
+        write(KEYS.keywords, keywords)
+    }
+}
+
+export function removeKeyword(id: string): void {
+    write(KEYS.keywords, getKeywords().filter((k) => k.id !== id))
+    // Also remove associated rank snapshots
+    write(KEYS.ranks, getRanks().filter((r) => r.keywordId !== id))
+}
+
+// ============================================================================
+// RANK SNAPSHOTS
+// ============================================================================
+
+export function getRanks(): StoredRankSnapshot[] {
+    return read<StoredRankSnapshot[]>(KEYS.ranks, [])
+}
+
+export function saveRankSnapshot(keywordId: string, siteId: string, rank: number | null): StoredRankSnapshot {
+    const ranks = getRanks()
+    const snapshot: StoredRankSnapshot = {
+        id: genId(),
+        keywordId,
+        siteId,
+        rank,
+        checkedAt: new Date().toISOString(),
+    }
+    ranks.push(snapshot)
+    write(KEYS.ranks, ranks)
+    return snapshot
+}
+
+export function getRankHistory(keywordId: string, limit = 30): StoredRankSnapshot[] {
+    return getRanks()
+        .filter((r) => r.keywordId === keywordId)
+        .sort((a, b) => new Date(a.checkedAt).getTime() - new Date(b.checkedAt).getTime())
+        .slice(-limit)
 }

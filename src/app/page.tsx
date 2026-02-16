@@ -589,7 +589,20 @@ export default function Home() {
           total: cat.checks.length,
           passed: cat.checks.filter((c: AuditCheck) => c.status === "pass").length,
         }))
-        saveAudit(url, data.overallScore, issuesCount, categorySummary)
+        // Collect failed/warned checks for Quick Wins
+        const failedChecks = (data.categories || []).flatMap((cat: AuditCategory) =>
+          cat.checks
+            .filter((c: AuditCheck) => c.status === "fail" || c.status === "warning")
+            .map((c: AuditCheck) => ({
+              title: c.title,
+              status: c.status,
+              description: c.description,
+              recommendation: c.recommendation || undefined,
+              category: cat.name,
+              categoryLabel: cat.label,
+            }))
+        )
+        saveAudit(url, data.overallScore, issuesCount, categorySummary, failedChecks, data.categories || [])
         window.dispatchEvent(new Event("auditor:update"))
       } catch (e) {
         console.warn("Failed to save audit to localStorage:", e)
