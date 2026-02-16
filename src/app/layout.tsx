@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { ToastProvider } from "@/components/ui/toast-provider";
+import { WelcomeModal } from "@/components/WelcomeModal";
 
 export const metadata: Metadata = {
   title: "SEO Auditor Dashboard",
@@ -21,6 +22,7 @@ export default function RootLayout({
           <main className="flex-1 overflow-y-auto">
             {children}
           </main>
+          <WelcomeModal />
         </ToastProvider>
       </body>
     </html>
