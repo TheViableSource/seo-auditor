@@ -21,6 +21,7 @@ import {
     Sparkles,
     Check,
     X,
+    MapPin,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,11 +39,17 @@ import {
     saveRankSnapshot,
     getRankHistory,
     getLatestAuditForSite,
+    saveLocalRank,
+    getLatestLocalRanks,
+    getSettings,
+    TIER_LIMITS,
     type StoredSite,
     type StoredCompetitor,
     type StoredKeyword,
     type StoredRankSnapshot,
+    type LocalRankEntry,
 } from "@/lib/local-storage"
+import { BubbleMap } from "@/components/BubbleMap"
 
 /* ------------------------------------------------------------------ */
 /*  Radar Chart (SVG)                                                   */
@@ -235,7 +242,14 @@ export default function RankingsPage() {
     const [mounted, setMounted] = useState(false)
     const [sites, setSites] = useState<StoredSite[]>([])
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null)
-    const [activeTab, setActiveTab] = useState<"competitors" | "keywords">("competitors")
+    const [activeTab, setActiveTab] = useState<"competitors" | "keywords" | "local">("competitors")
+
+    // Local rank tracking state
+    const [localRankKeyword, setLocalRankKeyword] = useState("")
+    const [localRankCities, setLocalRankCities] = useState<string[]>(["New York, NY", "Los Angeles, CA", "Chicago, IL", "Houston, TX", "Seattle, WA"])
+    const [localRankResults, setLocalRankResults] = useState<LocalRankEntry[]>([])
+    const [localRankLoading, setLocalRankLoading] = useState(false)
+    const [hasLocalRankAccess, setHasLocalRankAccess] = useState(false)
 
     // Competitors
     const [competitors, setCompetitors] = useState<StoredCompetitor[]>([])
@@ -576,6 +590,16 @@ export default function RankingsPage() {
                         >
                             <Search className="w-4 h-4 inline mr-1.5 -mt-0.5" />
                             Keyword Rankings
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("local")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "local"
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                                }`}
+                        >
+                            <MapPin className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                            Local Rankings
                         </button>
                     </div>
 
@@ -1026,6 +1050,182 @@ export default function RankingsPage() {
                                         </p>
                                         <p className="text-xs text-muted-foreground">
                                             Use the form above to start tracking a keyword.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ============================================================ */}
+                    {/*  LOCAL RANKINGS TAB                                           */}
+                    {/* ============================================================ */}
+                    {activeTab === "local" && (
+                        <div className="space-y-6">
+                            <Card className="shadow-sm border-zinc-200">
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <MapPin className="h-4 w-4 text-orange-500" />
+                                        Local Rank Check
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={localRankKeyword}
+                                            onChange={(e) => setLocalRankKeyword(e.target.value)}
+                                            placeholder="Enter keyword to check locally..."
+                                            className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-background focus:ring-2 focus:ring-orange-500 outline-none"
+                                        />
+                                        <Button
+                                            disabled={!localRankKeyword.trim() || localRankLoading}
+                                            className="gap-2 bg-orange-500 hover:bg-orange-600 text-white"
+                                            onClick={async () => {
+                                                if (!localRankKeyword.trim() || !selectedSite) return
+                                                setLocalRankLoading(true)
+                                                try {
+                                                    const res = await fetch("/api/local-rank", {
+                                                        method: "POST",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({
+                                                            keyword: localRankKeyword,
+                                                            url: selectedSite.url,
+                                                            locations: localRankCities,
+                                                        }),
+                                                    })
+                                                    const data = await res.json()
+                                                    if (data.results) {
+                                                        const saved: LocalRankEntry[] = data.results.map((r: { city: string; state: string; lat: number; lng: number; rank: number | null; location: string }) =>
+                                                            saveLocalRank({
+                                                                keywordId: `local_${localRankKeyword}`,
+                                                                siteId: selectedSiteId!,
+                                                                keyword: localRankKeyword,
+                                                                location: r.location,
+                                                                city: r.city,
+                                                                state: r.state,
+                                                                lat: r.lat,
+                                                                lng: r.lng,
+                                                                rank: r.rank,
+                                                            })
+                                                        )
+                                                        setLocalRankResults(saved)
+                                                    }
+                                                } catch {
+                                                    // handle error silently
+                                                } finally {
+                                                    setLocalRankLoading(false)
+                                                }
+                                            }}
+                                        >
+                                            {localRankLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                                            {localRankLoading ? "Checking..." : "Check Local Ranks"}
+                                        </Button>
+                                    </div>
+
+                                    {/* City Selector */}
+                                    <div>
+                                        <p className="text-xs font-medium text-muted-foreground mb-2">Cities to check ({localRankCities.length} selected)</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {[
+                                                "New York, NY", "Los Angeles, CA", "Chicago, IL", "Houston, TX",
+                                                "Phoenix, AZ", "Philadelphia, PA", "San Diego, CA", "Dallas, TX",
+                                                "Austin, TX", "Portland, OR", "Seattle, WA", "Denver, CO",
+                                                "Miami, FL", "Atlanta, GA", "Boston, MA", "Nashville, TN",
+                                                "Las Vegas, NV", "Minneapolis, MN", "Charlotte, NC", "San Antonio, TX"
+                                            ].map(city => (
+                                                <button
+                                                    key={city}
+                                                    onClick={() => {
+                                                        setLocalRankCities(prev =>
+                                                            prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]
+                                                        )
+                                                    }}
+                                                    className={`px-2 py-1 rounded text-[11px] font-medium transition-all ${localRankCities.includes(city)
+                                                            ? "bg-orange-500 text-white"
+                                                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                                        }`}
+                                                >
+                                                    {city}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Bubble Map */}
+                            {localRankResults.length > 0 && (
+                                <Card className="shadow-sm border-zinc-200">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-base">Geographic Rank Distribution</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <BubbleMap data={localRankResults} keyword={localRankKeyword} />
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Results Table */}
+                            {localRankResults.length > 0 && (
+                                <Card className="shadow-sm border-zinc-200">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-base">Local Rank Results</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm">
+                                                <thead>
+                                                    <tr className="border-b border-border">
+                                                        <th className="text-left py-2 pr-4 font-medium text-muted-foreground">City</th>
+                                                        <th className="text-center py-2 px-4 font-medium text-muted-foreground">Rank</th>
+                                                        <th className="text-center py-2 pl-4 font-medium text-muted-foreground">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {localRankResults
+                                                        .sort((a, b) => (a.rank || 99) - (b.rank || 99))
+                                                        .map((entry) => (
+                                                            <tr key={entry.id} className="border-b border-border/50">
+                                                                <td className="py-2 pr-4">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                        {entry.location}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-2 px-4 text-center">
+                                                                    <span className={`font-bold ${!entry.rank ? "text-zinc-400" :
+                                                                            entry.rank <= 3 ? "text-green-600" :
+                                                                                entry.rank <= 10 ? "text-orange-600" : "text-red-600"
+                                                                        }`}>
+                                                                        {entry.rank ? `#${entry.rank}` : "N/A"}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="py-2 pl-4 text-center">
+                                                                    {entry.rank ? (
+                                                                        entry.rank <= 3 ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-950/30 text-green-600 font-medium">Top 3</span> :
+                                                                            entry.rank <= 10 ? <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950/30 text-orange-600 font-medium">Page 1</span> :
+                                                                                <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-950/30 text-red-600 font-medium">Page {Math.ceil(entry.rank / 10)}</span>
+                                                                    ) : (
+                                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-medium">Not ranked</span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {localRankResults.length === 0 && !localRankLoading && (
+                                <Card className="shadow-sm border-zinc-200">
+                                    <CardContent className="text-center py-12">
+                                        <MapPin className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                                        <h3 className="text-lg font-semibold mb-2">No Local Rank Data</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Enter a keyword and select cities to check your local search rankings.
                                         </p>
                                     </CardContent>
                                 </Card>

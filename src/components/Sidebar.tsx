@@ -19,6 +19,9 @@ import {
   Code,
   Moon,
   Sun,
+  BookOpen,
+  HelpCircle,
+  Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -82,6 +85,8 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
     localStorage.setItem("auditor:darkMode", String(next))
   }
 
+  const isAgency = mounted && TIER_LIMITS[settings.tier]?.clientAssignment
+
   const navItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/", label: "Quick Audit", icon: FileText },
@@ -95,6 +100,9 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
     { href: "/schema-generator", label: "Schema Generator", icon: Code },
     { href: "/rankings", label: "Rankings", icon: BarChart3 },
     { href: "/widget", label: "Widgets", icon: Code },
+    ...(isAgency ? [{ href: "/clients", label: "Clients", icon: Users }] : []),
+    { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
+    { href: "/help", label: "Help Desk", icon: HelpCircle },
     { href: "/settings", label: "Settings", icon: Settings },
   ]
 

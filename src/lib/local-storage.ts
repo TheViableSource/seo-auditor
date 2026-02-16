@@ -13,6 +13,8 @@ export interface StoredSite {
     status: "active" | "pending" | "error"
     auditSchedule?: "manual" | "weekly" | "monthly"
     lastScheduledAudit?: string
+    embedToken?: string
+    clientId?: string
     createdAt: string
 }
 
@@ -65,11 +67,34 @@ export interface StoredFullCheck {
 
 export type UserTier = "free" | "starter" | "pro" | "agency"
 
-export const TIER_LIMITS: Record<UserTier, { sites: number; keywords: number; label: string; pdfBranding: boolean }> = {
-    free: { sites: 1, keywords: 5, label: "Free", pdfBranding: false },
-    starter: { sites: 3, keywords: 20, label: "Starter", pdfBranding: false },
-    pro: { sites: 5, keywords: 50, label: "Pro", pdfBranding: false },
-    agency: { sites: Infinity, keywords: Infinity, label: "Agency", pdfBranding: true },
+export const TIER_LIMITS: Record<UserTier, { sites: number; keywords: number; label: string; pdfBranding: boolean; embedDashboard: boolean; clientAssignment: boolean; localRankTracking: boolean }> = {
+    free: { sites: 1, keywords: 5, label: "Free", pdfBranding: false, embedDashboard: false, clientAssignment: false, localRankTracking: false },
+    starter: { sites: 3, keywords: 20, label: "Starter", pdfBranding: false, embedDashboard: false, clientAssignment: false, localRankTracking: false },
+    pro: { sites: 5, keywords: 50, label: "Pro", pdfBranding: false, embedDashboard: true, clientAssignment: false, localRankTracking: true },
+    agency: { sites: Infinity, keywords: Infinity, label: "Agency", pdfBranding: true, embedDashboard: true, clientAssignment: true, localRankTracking: true },
+}
+
+export interface StoredClient {
+    id: string
+    name: string
+    email?: string
+    company?: string
+    siteIds: string[]
+    createdAt: string
+}
+
+export interface LocalRankEntry {
+    id: string
+    keywordId: string
+    siteId: string
+    keyword: string
+    location: string  // e.g. "Portland, OR"
+    city: string
+    state: string
+    lat: number
+    lng: number
+    rank: number | null
+    checkedAt: string
 }
 
 export interface StoredSettings {
@@ -130,6 +155,8 @@ const KEYS = {
     competitors: "auditor:competitors",
     keywords: "auditor:keywords",
     ranks: "auditor:ranks",
+    clients: "auditor:clients",
+    localRanks: "auditor:localRanks",
 } as const
 
 // ============================================================================
@@ -629,5 +656,160 @@ export function clearNotifications(): void {
 
 export function getUnreadNotificationCount(): number {
     return getNotifications().filter(n => !n.read).length
+}
+
+// ============================================================================
+// CLIENTS (Agency Tier)
+// ============================================================================
+
+export function getClients(): StoredClient[] {
+    return read<StoredClient[]>(KEYS.clients, [])
+}
+
+export function getClientById(id: string): StoredClient | undefined {
+    return getClients().find((c) => c.id === id)
+}
+
+export function addClient(name: string, email?: string, company?: string): StoredClient {
+    const clients = getClients()
+    const client: StoredClient = {
+        id: genId(),
+        name,
+        email,
+        company,
+        siteIds: [],
+        createdAt: new Date().toISOString(),
+    }
+    clients.push(client)
+    write(KEYS.clients, clients)
+    window.dispatchEvent(new Event("auditor:update"))
+    return client
+}
+
+export function updateClient(id: string, updates: Partial<Pick<StoredClient, "name" | "email" | "company">>): void {
+    const clients = getClients()
+    const idx = clients.findIndex((c) => c.id === id)
+    if (idx >= 0) {
+        clients[idx] = { ...clients[idx], ...updates }
+        write(KEYS.clients, clients)
+        window.dispatchEvent(new Event("auditor:update"))
+    }
+}
+
+export function removeClient(id: string): void {
+    const clients = getClients().filter((c) => c.id !== id)
+    write(KEYS.clients, clients)
+    // Unassign sites from this client
+    const sites = getSites()
+    for (const site of sites) {
+        if (site.clientId === id) {
+            site.clientId = undefined
+        }
+    }
+    write(KEYS.sites, sites)
+    window.dispatchEvent(new Event("auditor:update"))
+}
+
+export function assignSiteToClient(siteId: string, clientId: string | null): void {
+    const sites = getSites()
+    const idx = sites.findIndex((s) => s.id === siteId)
+    if (idx >= 0) {
+        sites[idx].clientId = clientId || undefined
+        write(KEYS.sites, sites)
+    }
+    // Update client's siteIds array
+    if (clientId) {
+        const clients = getClients()
+        const cIdx = clients.findIndex((c) => c.id === clientId)
+        if (cIdx >= 0 && !clients[cIdx].siteIds.includes(siteId)) {
+            clients[cIdx].siteIds.push(siteId)
+            write(KEYS.clients, clients)
+        }
+    }
+    window.dispatchEvent(new Event("auditor:update"))
+}
+
+export function getClientSites(clientId: string): StoredSite[] {
+    return getSites().filter((s) => s.clientId === clientId)
+}
+
+// ============================================================================
+// EMBED TOKENS
+// ============================================================================
+
+export function generateEmbedToken(siteId: string): string {
+    const token = `emb_${genId()}_${Math.random().toString(36).slice(2, 10)}`
+    const sites = getSites()
+    const idx = sites.findIndex((s) => s.id === siteId)
+    if (idx >= 0) {
+        sites[idx].embedToken = token
+        write(KEYS.sites, sites)
+        window.dispatchEvent(new Event("auditor:update"))
+    }
+    return token
+}
+
+export function validateEmbedToken(token: string): { site: StoredSite; audit: StoredAudit | null } | null {
+    const site = getSites().find((s) => s.embedToken === token)
+    if (!site) return null
+    const audit = getLatestAuditForSite(site.id) ?? null
+    return { site, audit }
+}
+
+export function revokeEmbedToken(siteId: string): void {
+    const sites = getSites()
+    const idx = sites.findIndex((s) => s.id === siteId)
+    if (idx >= 0) {
+        sites[idx].embedToken = undefined
+        write(KEYS.sites, sites)
+        window.dispatchEvent(new Event("auditor:update"))
+    }
+}
+
+// ============================================================================
+// LOCAL RANK TRACKING
+// ============================================================================
+
+export function getLocalRanks(): LocalRankEntry[] {
+    return read<LocalRankEntry[]>(KEYS.localRanks, [])
+}
+
+export function getLocalRanksForKeyword(keywordId: string): LocalRankEntry[] {
+    return getLocalRanks()
+        .filter((r) => r.keywordId === keywordId)
+        .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())
+}
+
+export function getLocalRanksForSite(siteId: string): LocalRankEntry[] {
+    return getLocalRanks()
+        .filter((r) => r.siteId === siteId)
+        .sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime())
+}
+
+export function saveLocalRank(entry: Omit<LocalRankEntry, "id" | "checkedAt">): LocalRankEntry {
+    const ranks = getLocalRanks()
+    const saved: LocalRankEntry = {
+        ...entry,
+        id: genId(),
+        checkedAt: new Date().toISOString(),
+    }
+    ranks.push(saved)
+    // Keep max 500 entries
+    write(KEYS.localRanks, ranks.slice(-500))
+    window.dispatchEvent(new Event("auditor:update"))
+    return saved
+}
+
+export function getLatestLocalRanks(keywordId: string): LocalRankEntry[] {
+    const all = getLocalRanksForKeyword(keywordId)
+    // Get latest rank per location
+    const latest = new Map<string, LocalRankEntry>()
+    for (const entry of all) {
+        const existing = latest.get(entry.location)
+        if (!existing || new Date(entry.checkedAt) > new Date(existing.checkedAt)) {
+            latest.set(entry.location, entry)
+        }
+    }
+    return Array.from(latest.values())
 }
 
