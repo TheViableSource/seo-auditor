@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/toast-provider"
 
 type SchemaType = "Organization" | "LocalBusiness" | "Article" | "Product" | "FAQPage" | "HowTo" | "BreadcrumbList"
 
@@ -167,10 +168,13 @@ export default function SchemaGeneratorPage() {
         }
     }, [schemaType, orgName, orgUrl, orgLogo, orgPhone, orgEmail, bizStreet, bizCity, bizState, bizZip, bizCountry, articleTitle, articleAuthor, articleDate, articleDesc, articleImage, prodName, prodDesc, prodPrice, prodCurrency, prodImage, prodAvail, faqItems, howToName, howToDesc, howToSteps, breadcrumbs])
 
+    const toast = useToast()
+
     const copyToClipboard = async () => {
         const snippet = `<script type="application/ld+json">\n${jsonLd}\n</script>`
         await navigator.clipboard.writeText(snippet)
         setCopied(true)
+        toast.success("Schema markup copied to clipboard!")
         setTimeout(() => setCopied(false), 2000)
     }
 
@@ -317,8 +321,8 @@ export default function SchemaGeneratorPage() {
                                         key={st.type}
                                         onClick={() => setSchemaType(st.type)}
                                         className={`p-3 rounded-lg border text-left transition-all text-sm ${schemaType === st.type
-                                                ? "border-orange-400 bg-orange-50 dark:bg-orange-950/30 shadow-sm"
-                                                : "border-border hover:border-zinc-300 dark:hover:border-zinc-700"
+                                            ? "border-orange-400 bg-orange-50 dark:bg-orange-950/30 shadow-sm"
+                                            : "border-border hover:border-zinc-300 dark:hover:border-zinc-700"
                                             }`}
                                     >
                                         <p className="font-medium">{st.label}</p>

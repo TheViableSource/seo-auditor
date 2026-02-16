@@ -11,15 +11,18 @@ import {
     Inbox,
     Download,
     Filter,
+    Trash2,
 } from "lucide-react"
 import Link from "next/link"
 import {
     getAudits,
     getSites,
     exportAllData,
+    removeAudits,
     type StoredAudit,
     type StoredSite,
 } from "@/lib/local-storage"
+import { useToast } from "@/components/ui/toast-provider"
 
 function ScoreBadge({ score }: { score: number }) {
     const getStyle = (s: number) => {
@@ -38,6 +41,7 @@ type SortKey = "date" | "score" | "issues"
 type SortDir = "asc" | "desc"
 
 export default function AuditsPage() {
+    const toast = useToast()
     const [audits, setAudits] = useState<StoredAudit[]>([])
     const [sites, setSites] = useState<StoredSite[]>([])
     const [searchQuery, setSearchQuery] = useState("")
@@ -45,6 +49,7 @@ export default function AuditsPage() {
     const [sortKey, setSortKey] = useState<SortKey>("date")
     const [sortDir, setSortDir] = useState<SortDir>("desc")
     const [mounted, setMounted] = useState(false)
+    const [selected, setSelected] = useState<Set<string>>(new Set())
 
     const load = useCallback(() => {
         setAudits(getAudits())
@@ -120,6 +125,32 @@ export default function AuditsPage() {
         URL.revokeObjectURL(url)
     }
 
+    const toggleSelect = (id: string) => {
+        setSelected(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
+
+    const toggleSelectAll = () => {
+        if (selected.size === filtered.length) {
+            setSelected(new Set())
+        } else {
+            setSelected(new Set(filtered.map(a => a.id)))
+        }
+    }
+
+    const handleBulkDelete = () => {
+        const count = selected.size
+        removeAudits(Array.from(selected))
+        setSelected(new Set())
+        load()
+        window.dispatchEvent(new Event("auditor:update"))
+        toast.success(`Deleted ${count} audit${count !== 1 ? "s" : ""}`)
+    }
+
     return (
         <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
             {/* Header */}
@@ -186,6 +217,9 @@ export default function AuditsPage() {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-border bg-muted/30">
+                                            <th className="py-3 px-3 w-10">
+                                                <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={toggleSelectAll} className="accent-orange-500 w-4 h-4 cursor-pointer" />
+                                            </th>
                                             <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Site</th>
                                             <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">URL</th>
                                             <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -212,7 +246,10 @@ export default function AuditsPage() {
                                     </thead>
                                     <tbody className="divide-y divide-border">
                                         {filtered.map((audit) => (
-                                            <tr key={audit.id} className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => window.location.href = `/audits/${audit.id}`}>
+                                            <tr key={audit.id} className={`hover:bg-muted/30 transition-colors cursor-pointer ${selected.has(audit.id) ? "bg-orange-50/50 dark:bg-orange-900/10" : ""}`} onClick={() => window.location.href = `/audits/${audit.id}`}>
+                                                <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
+                                                    <input type="checkbox" checked={selected.has(audit.id)} onChange={() => toggleSelect(audit.id)} className="accent-orange-500 w-4 h-4 cursor-pointer" />
+                                                </td>
                                                 <td className="py-3 px-4">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-6 h-6 rounded bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-[10px] shrink-0">
@@ -297,6 +334,33 @@ export default function AuditsPage() {
                             Run Your First Audit
                         </Button>
                     </Link>
+                </div>
+            )}
+
+            {/* Floating Bulk Actions Bar */}
+            {selected.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+                    <div className="flex items-center gap-4 bg-zinc-900 text-white px-6 py-3 rounded-full shadow-xl border border-zinc-700">
+                        <span className="text-sm font-medium">{selected.size} audit{selected.size !== 1 ? "s" : ""} selected</span>
+                        <div className="w-px h-5 bg-zinc-600" />
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-400 hover:text-red-300 hover:bg-red-900/30 gap-1.5"
+                            onClick={handleBulkDelete}
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete Selected
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-zinc-400 hover:text-white gap-1.5"
+                            onClick={() => setSelected(new Set())}
+                        >
+                            Clear
+                        </Button>
+                    </div>
                 </div>
             )}
         </div>

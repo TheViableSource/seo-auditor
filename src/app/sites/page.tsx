@@ -26,6 +26,7 @@ import {
     getAuditsForSite,
     type StoredSite,
 } from "@/lib/local-storage"
+import { useToast } from "@/components/ui/toast-provider"
 
 function ScoreMeter({ score }: { score: number }) {
     const getColor = (s: number) => {
@@ -162,6 +163,7 @@ function DeleteConfirmDialog({ site, onClose, onConfirm }: { site: StoredSite; o
 }
 
 export default function SitesPage() {
+    const toast = useToast()
     const [sites, setSites] = useState<StoredSite[]>([])
     const [showAddDialog, setShowAddDialog] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<StoredSite | null>(null)
@@ -188,6 +190,7 @@ export default function SitesPage() {
         addSite(url, name || undefined)
         load()
         window.dispatchEvent(new Event("auditor:update"))
+        toast.success(`Site "${name || url}" added!`)
     }
 
     const handleDelete = (site: StoredSite) => {
@@ -195,6 +198,7 @@ export default function SitesPage() {
         setDeleteTarget(null)
         load()
         window.dispatchEvent(new Event("auditor:update"))
+        toast.info(`Site "${site.name || site.domain}" removed`)
     }
 
     const filteredSites = sites.filter(

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import {
     Globe,
     FileSearch,
+    FileText,
+    GitCompareArrows,
     TrendingUp,
     TrendingDown,
     AlertTriangle,
@@ -156,11 +158,23 @@ export default function DashboardPage() {
                             : "Here's your workspace overview."}
                     </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                     <Link href="/sites">
                         <Button variant="outline" className="gap-2">
                             <Plus className="h-4 w-4" />
                             Add Site
+                        </Button>
+                    </Link>
+                    <Link href="/reports">
+                        <Button variant="outline" className="gap-2">
+                            <FileText className="h-4 w-4" />
+                            Reports
+                        </Button>
+                    </Link>
+                    <Link href="/compare">
+                        <Button variant="outline" className="gap-2">
+                            <GitCompareArrows className="h-4 w-4" />
+                            Compare
                         </Button>
                     </Link>
                     <Link href="/">

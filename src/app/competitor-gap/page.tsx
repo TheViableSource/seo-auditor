@@ -6,6 +6,7 @@ import { ArrowLeft, Zap, Loader2, AlertTriangle, CheckCircle, XCircle } from "lu
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { useToast } from "@/components/ui/toast-provider"
 
 interface AuditCategory {
     name: string
@@ -24,6 +25,7 @@ interface ComparisonResult {
 }
 
 export default function CompetitorGapPage() {
+    const toast = useToast()
     const [yourUrl, setYourUrl] = useState("")
     const [compUrl, setCompUrl] = useState("")
     const [loading, setLoading] = useState(false)
@@ -69,8 +71,12 @@ export default function CompetitorGapPage() {
                 categories: compData.categories || [],
                 fetchTimeMs: compData.meta?.fetchTimeMs || 0,
             })
+
+            toast.success("Competitor comparison complete!")
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Comparison failed")
+            const msg = e instanceof Error ? e.message : "Comparison failed"
+            setError(msg)
+            toast.error(msg)
         } finally {
             setLoading(false)
             setProgress("")
@@ -173,8 +179,8 @@ export default function CompetitorGapPage() {
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="font-medium text-sm">{yourCat.label}</span>
                                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isGap ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" :
-                                                    diff > 0 ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" :
-                                                        "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                                                diff > 0 ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" :
+                                                    "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
                                                 }`}>
                                                 {diff > 0 ? `+${diff}` : diff === 0 ? "Tied" : diff}
                                             </span>

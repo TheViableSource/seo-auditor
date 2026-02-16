@@ -86,6 +86,8 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
     { href: "/", label: "Quick Audit", icon: FileText },
     { href: "/sites", label: "Sites", icon: Globe, badge: mounted ? sitesCount : undefined },
     { href: "/audits", label: "Audit History", icon: History, badge: mounted ? auditsCount : undefined },
+    { href: "/reports", label: "Reports", icon: FileText },
+    { href: "/internal-links", label: "Internal Links", icon: Globe },
     { href: "/compare", label: "Compare", icon: GitCompareArrows },
     { href: "/competitor-gap", label: "Competitor Gap", icon: Swords },
     { href: "/serp-simulator", label: "SERP Simulator", icon: Monitor },

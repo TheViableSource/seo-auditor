@@ -48,6 +48,7 @@ import { AuditResultsSkeleton } from "@/components/AuditResultsSkeleton"
 import { saveAudit } from "@/lib/local-storage"
 import { canUseAi, getAiRemaining, incrementAiUsage, AI_TIER_LIMITS } from "@/lib/ai-usage"
 import { getSettings } from "@/lib/local-storage"
+import { useToast } from "@/components/ui/toast-provider"
 
 // ============================================================
 // SCORE RING COMPONENT
@@ -618,6 +619,7 @@ function PageResourcesPanel({ data }: { data: PageResourcesData }) {
 // ============================================================
 export default function Home() {
   const searchParams = useSearchParams()
+  const globalToast = useToast()
   const [url, setUrl] = useState("")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AuditResult | null>(null)
@@ -709,6 +711,7 @@ export default function Home() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to audit this site. Please check the URL and try again.")
+      globalToast.error("Audit failed — check the URL and try again")
     } finally {
       setLoading(false)
       setAuditProgress(null)
@@ -741,6 +744,7 @@ export default function Home() {
       )
       saveAudit(url, data.score, issuesCount, categorySummary, failedChecks, data.categories || [])
       window.dispatchEvent(new Event("auditor:update"))
+      globalToast.success(`Audit complete — Score: ${data.score}/100`)
     } catch (e) {
       console.warn("Failed to save audit to localStorage:", e)
     }

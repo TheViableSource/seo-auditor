@@ -259,6 +259,17 @@ export function saveAudit(
     return audit
 }
 
+export function removeAudit(id: string): void {
+    const audits = getAudits().filter(a => a.id !== id)
+    localStorage.setItem(KEYS.audits, JSON.stringify(audits))
+}
+
+export function removeAudits(ids: string[]): void {
+    const idSet = new Set(ids)
+    const audits = getAudits().filter(a => !idSet.has(a.id))
+    localStorage.setItem(KEYS.audits, JSON.stringify(audits))
+}
+
 export function getRecentAudits(limit = 10): StoredAudit[] {
     return getAudits()
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
