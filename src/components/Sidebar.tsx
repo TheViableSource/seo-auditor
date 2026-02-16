@@ -15,6 +15,10 @@ import {
   ChevronDown,
   History,
   GitCompareArrows,
+  Swords,
+  Code,
+  Moon,
+  Sun,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -61,13 +65,31 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
     }
   }, [load])
 
+  const [dark, setDark] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem("auditor:darkMode")
+    const isDark = saved === "true" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    setDark(isDark)
+    document.documentElement.classList.toggle("dark", isDark)
+  }, [])
+
+  const toggleDark = () => {
+    const next = !dark
+    setDark(next)
+    document.documentElement.classList.toggle("dark", next)
+    localStorage.setItem("auditor:darkMode", String(next))
+  }
+
   const navItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/", label: "Quick Audit", icon: FileText },
     { href: "/sites", label: "Sites", icon: Globe, badge: mounted ? sitesCount : undefined },
     { href: "/audits", label: "Audit History", icon: History, badge: mounted ? auditsCount : undefined },
     { href: "/compare", label: "Compare", icon: GitCompareArrows },
+    { href: "/competitor-gap", label: "Competitor Gap", icon: Swords },
     { href: "/serp-simulator", label: "SERP Simulator", icon: Monitor },
+    { href: "/schema-generator", label: "Schema Generator", icon: Code },
     { href: "/rankings", label: "Rankings", icon: BarChart3 },
     { href: "/settings", label: "Settings", icon: Settings },
   ]
@@ -140,8 +162,16 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
         })}
       </nav>
 
-      {/* User section */}
-      <div className="p-4 border-t border-sidebar-border">
+      {/* Footer: dark mode + user */}
+      <div className="p-4 border-t border-sidebar-border space-y-2">
+        <button
+          onClick={toggleDark}
+          className="w-full flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-all"
+          aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {dark ? "Light Mode" : "Dark Mode"}
+        </button>
         <Link href="/settings" className="flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors">
           <div
             className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center font-bold text-sm shadow-sm"

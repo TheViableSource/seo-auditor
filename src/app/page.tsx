@@ -5,42 +5,49 @@ import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  Loader2,
+  Accessibility,
   AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  Bot,
+  Check,
   CheckCircle,
-  XCircle,
-  Info,
   ChevronDown,
   ChevronRight,
-  FileText,
-  Shield,
-  Accessibility,
-  Code2,
-  Zap,
-  Lock,
-  Bot,
-  BookOpen,
+  ChevronUp,
   Clock,
-  BarChart3,
-  Globe,
+  Code2,
+  Copy,
+  Database,
   ExternalLink,
+  FileCode,
+  FileSearch,
+  FileText,
+  FileWarning,
+  Gauge,
+  Globe,
+  Image as ImageIcon,
+  Info,
+  Lightbulb,
+  Loader2,
+  Lock,
+  MessageCircle,
   Printer,
   Share2,
-  Image as ImageIcon,
-  FileCode,
-  Lightbulb,
-  Copy,
-  Check,
-  ArrowRight,
-  MessageCircle,
-  Sparkles,
-  Gauge,
-  FileWarning,
+  Shield,
   ShieldAlert,
+  Sparkles,
+  Wand2,
+  XCircle,
+  Zap,
 } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
 import type { AuditResult, AuditCategory, AuditCheck, CheckStatus, ContentAnalysisData, PageResourcesData, SocialPreviewData } from "@/lib/types"
 import { AuditResultsSkeleton } from "@/components/AuditResultsSkeleton"
 import { saveAudit } from "@/lib/local-storage"
+import { canUseAi, getAiRemaining, incrementAiUsage, AI_TIER_LIMITS } from "@/lib/ai-usage"
+import { getSettings } from "@/lib/local-storage"
 
 // ============================================================
 // SCORE RING COMPONENT
@@ -560,58 +567,115 @@ export default function Home() {
     }
   }, [searchParams])
 
+  const [auditProgress, setAuditProgress] = useState<{ step: number; total: number; label: string } | null>(null)
+
   const runAudit = async () => {
     if (!url) return
     setLoading(true)
     setError("")
     setResult(null)
+    setAuditProgress({ step: 0, total: 13, label: "Starting audit…" })
 
     try {
       const response = await fetch(`${window.location.origin}/api/audit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream",
+        },
         body: JSON.stringify({ url }),
       })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || "Audit failed")
-      setResult(data)
-      setActiveTab("on-page")
-      setActivePanel("checks")
 
-      // Auto-save to localStorage + register site
-      try {
-        const issuesCount = (data.categories || []).reduce(
-          (sum: number, cat: AuditCategory) => sum + cat.checks.filter((c: AuditCheck) => c.status === "fail").length, 0
-        )
-        const categorySummary = (data.categories || []).map((cat: AuditCategory) => ({
-          name: cat.name,
-          label: cat.label,
-          score: cat.score,
-          total: cat.checks.length,
-          passed: cat.checks.filter((c: AuditCheck) => c.status === "pass").length,
-        }))
-        // Collect failed/warned checks for Quick Wins
-        const failedChecks = (data.categories || []).flatMap((cat: AuditCategory) =>
-          cat.checks
-            .filter((c: AuditCheck) => c.status === "fail" || c.status === "warning")
-            .map((c: AuditCheck) => ({
-              title: c.title,
-              status: c.status,
-              description: c.description,
-              recommendation: c.recommendation || undefined,
-              category: cat.name,
-              categoryLabel: cat.label,
-            }))
-        )
-        saveAudit(url, data.overallScore, issuesCount, categorySummary, failedChecks, data.categories || [])
-        window.dispatchEvent(new Event("auditor:update"))
-      } catch (e) {
-        console.warn("Failed to save audit to localStorage:", e)
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: "Audit failed" }))
+        throw new Error(errData.error || "Audit failed")
       }
-    } catch {
-      setError("Failed to audit this site. Please check the URL and try again.")
+
+      if (response.headers.get("content-type")?.includes("text/event-stream") && response.body) {
+        // SSE streaming path
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ""
+        let finalResult: AuditResult | null = null
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+
+          const lines = buffer.split("\n")
+          buffer = lines.pop() || ""
+
+          let eventType = ""
+          for (const line of lines) {
+            if (line.startsWith("event: ")) eventType = line.slice(7)
+            else if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6))
+                if (eventType === "progress") {
+                  setAuditProgress({ step: data.step, total: data.total, label: data.label })
+                } else if (eventType === "result") {
+                  finalResult = data as AuditResult
+                } else if (eventType === "error") {
+                  throw new Error(data.error)
+                }
+              } catch (e) {
+                if (e instanceof Error && e.message !== "Unexpected end of JSON input") throw e
+              }
+            }
+          }
+        }
+
+        if (finalResult) {
+          setResult(finalResult)
+          setActiveTab("on-page")
+          setActivePanel("checks")
+          saveAuditResult(finalResult)
+        }
+      } else {
+        // Fallback JSON path
+        const data = await response.json()
+        setResult(data)
+        setActiveTab("on-page")
+        setActivePanel("checks")
+        saveAuditResult(data)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to audit this site. Please check the URL and try again.")
     } finally {
       setLoading(false)
+      setAuditProgress(null)
+    }
+  }
+
+  const saveAuditResult = (data: AuditResult) => {
+    try {
+      const issuesCount = (data.categories || []).reduce(
+        (sum: number, cat: AuditCategory) => sum + cat.checks.filter((c: AuditCheck) => c.status === "fail").length, 0
+      )
+      const categorySummary = (data.categories || []).map((cat: AuditCategory) => ({
+        name: cat.name,
+        label: cat.label,
+        score: cat.score,
+        total: cat.checks.length,
+        passed: cat.checks.filter((c: AuditCheck) => c.status === "pass").length,
+      }))
+      const failedChecks = (data.categories || []).flatMap((cat: AuditCategory) =>
+        cat.checks
+          .filter((c: AuditCheck) => c.status === "fail" || c.status === "warning")
+          .map((c: AuditCheck) => ({
+            title: c.title,
+            status: c.status,
+            description: c.description,
+            recommendation: c.recommendation || undefined,
+            category: cat.name,
+            categoryLabel: cat.label,
+          }))
+      )
+      saveAudit(url, data.score, issuesCount, categorySummary, failedChecks, data.categories || [])
+      window.dispatchEvent(new Event("auditor:update"))
+    } catch (e) {
+      console.warn("Failed to save audit to localStorage:", e)
     }
   }
 
@@ -651,7 +715,24 @@ export default function Home() {
         </div>
       )}
 
-      {loading && <AuditResultsSkeleton />}
+      {loading && auditProgress && (
+        <Card className="shadow-sm border-border">
+          <CardContent className="p-6 space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-foreground">{auditProgress.label}</span>
+              <span className="text-muted-foreground">Step {auditProgress.step} of {auditProgress.total}</span>
+            </div>
+            <Progress value={(auditProgress.step / auditProgress.total) * 100} className="h-2" />
+            <div className="grid grid-cols-4 md:grid-cols-7 gap-1">
+              {Array.from({ length: auditProgress.total }, (_, i) => (
+                <div key={i} className={`h-1 rounded-full transition-colors ${i < auditProgress.step ? "bg-orange-500" : "bg-muted"}`} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {loading && !auditProgress && <AuditResultsSkeleton />}
 
       {result && !loading && (
         <div className="space-y-6" ref={reportRef}>
