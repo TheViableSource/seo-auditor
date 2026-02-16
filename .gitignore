@@ -53,3 +53,4 @@ next-env.d.ts
 
 # Google OAuth tokens (never commit)
 .gsc-tokens.json
+.env*.local

@@ -3,14 +3,13 @@ import { NextRequest, NextResponse } from "next/server"
 // ============================================================
 // LOCAL RANK CHECK API
 // ============================================================
-// Checks keyword rank for a specific location.
-// In production, this would call an external SERP API
-// (DataForSEO, BrightLocal, SerpAPI, etc.)
+// Two modes:
+//   1. "cities" — checks preset US cities (legacy)
+//   2. "grid"  — generates NxN grid points around a business
+//      location and checks rank at each point
 //
-// For now, simulates geographic rank variation.
-// To integrate a real provider:
-// 1. Set LOCAL_RANK_API_KEY in .env.local
-// 2. Uncomment the provider call below
+// In production, replace simulation with real SERP API.
+// Set LOCAL_RANK_API_KEY in .env.local for real data.
 // ============================================================
 
 // Preset US cities with coordinates
@@ -39,38 +38,162 @@ const US_CITIES = [
 
 export { US_CITIES }
 
+// ── Haversine helpers ──
+const EARTH_RADIUS_MI = 3958.8
+const DEG_TO_RAD = Math.PI / 180
+const RAD_TO_DEG = 180 / Math.PI
+
+/** Offset a lat/lng by a distance in miles at a given bearing (degrees) */
+function offsetLatLng(
+    lat: number,
+    lng: number,
+    distanceMi: number,
+    bearingDeg: number,
+): { lat: number; lng: number } {
+    const angularDist = distanceMi / EARTH_RADIUS_MI
+    const bearing = bearingDeg * DEG_TO_RAD
+    const lat1 = lat * DEG_TO_RAD
+    const lng1 = lng * DEG_TO_RAD
+
+    const lat2 = Math.asin(
+        Math.sin(lat1) * Math.cos(angularDist) +
+        Math.cos(lat1) * Math.sin(angularDist) * Math.cos(bearing),
+    )
+    const lng2 =
+        lng1 +
+        Math.atan2(
+            Math.sin(bearing) * Math.sin(angularDist) * Math.cos(lat1),
+            Math.cos(angularDist) - Math.sin(lat1) * Math.sin(lat2),
+        )
+
+    return { lat: lat2 * RAD_TO_DEG, lng: lng2 * RAD_TO_DEG }
+}
+
+/** Distance between two lat/lng points in miles */
+function haversineDist(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const dLat = (lat2 - lat1) * DEG_TO_RAD
+    const dLng = (lng2 - lng1) * DEG_TO_RAD
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * DEG_TO_RAD) * Math.cos(lat2 * DEG_TO_RAD) * Math.sin(dLng / 2) ** 2
+    return 2 * EARTH_RADIUS_MI * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+/** Generate NxN grid points centered on a location */
+function generateGridPoints(
+    centerLat: number,
+    centerLng: number,
+    gridSize: number,
+    radiusMiles: number,
+): { row: number; col: number; lat: number; lng: number; distanceMi: number }[] {
+    const points: { row: number; col: number; lat: number; lng: number; distanceMi: number }[] = []
+    const half = Math.floor(gridSize / 2)
+    // Each step covers radiusMiles / half so edge points are at full radius
+    const stepMi = half > 0 ? radiusMiles / half : 0
+
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            const rowOffset = row - half // -half to +half
+            const colOffset = col - half
+
+            if (rowOffset === 0 && colOffset === 0) {
+                // Center point
+                points.push({ row, col, lat: centerLat, lng: centerLng, distanceMi: 0 })
+                continue
+            }
+
+            // Move north/south (bearing 0/180) then east/west (bearing 90/270)
+            const nsDistance = Math.abs(rowOffset) * stepMi
+            const nsBearing = rowOffset < 0 ? 0 : 180 // negative row = north
+            const ewDistance = Math.abs(colOffset) * stepMi
+            const ewBearing = colOffset > 0 ? 90 : 270
+
+            // Step 1: move north/south from center
+            const intermediate = rowOffset !== 0
+                ? offsetLatLng(centerLat, centerLng, nsDistance, nsBearing)
+                : { lat: centerLat, lng: centerLng }
+
+            // Step 2: from there move east/west
+            const final = colOffset !== 0
+                ? offsetLatLng(intermediate.lat, intermediate.lng, ewDistance, ewBearing)
+                : intermediate
+
+            const dist = haversineDist(centerLat, centerLng, final.lat, final.lng)
+            points.push({ row, col, lat: final.lat, lng: final.lng, distanceMi: dist })
+        }
+    }
+
+    return points
+}
+
 export async function POST(request: NextRequest) {
     try {
-        const { keyword, url, locations } = await request.json()
+        const body = await request.json()
+        const { keyword, url, mode } = body
 
         if (!keyword || !url) {
             return NextResponse.json({ error: "keyword and url are required" }, { status: 400 })
         }
 
-        // Determine which locations to check
+        // ── GRID MODE ──
+        if (mode === "grid") {
+            const { centerLat, centerLng, gridSize = 5, radiusMiles = 5 } = body
+
+            if (!centerLat || !centerLng) {
+                return NextResponse.json({ error: "centerLat and centerLng required for grid mode" }, { status: 400 })
+            }
+
+            const clampedSize = Math.min(Math.max(gridSize, 3), 9)
+            const clampedRadius = Math.min(Math.max(radiusMiles, 0.5), 50)
+
+            const points = generateGridPoints(centerLat, centerLng, clampedSize, clampedRadius)
+
+            // TODO: Replace with real SERP API calls per grid point
+            // const apiKey = process.env.LOCAL_RANK_API_KEY
+            // if (apiKey) { ... }
+
+            // Simulated — deterministic hash-based
+            const gridResults = points.map((pt) => {
+                const hash = (keyword + pt.lat.toFixed(3) + pt.lng.toFixed(3))
+                    .split("")
+                    .reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)
+                const absHash = Math.abs(hash)
+
+                // Ranks tend to be better near center (lower distance)
+                const distancePenalty = Math.floor(pt.distanceMi * 1.5)
+                const baseRank = (absHash % 15) + 1
+                const adjustedRank = Math.min(baseRank + distancePenalty, 30)
+                const hasRank = absHash % 12 !== 0 // ~92% chance
+
+                return {
+                    ...pt,
+                    rank: hasRank ? adjustedRank : null,
+                }
+            })
+
+            return NextResponse.json({
+                mode: "grid",
+                gridResults,
+                gridSize: clampedSize,
+                radiusMiles: clampedRadius,
+                keyword,
+                url,
+                simulated: true,
+                message: "Set LOCAL_RANK_API_KEY in .env.local for real SERP data",
+            })
+        }
+
+        // ── CITIES MODE (legacy) ──
+        const { locations } = body
         const targetLocations = locations && Array.isArray(locations)
             ? US_CITIES.filter(c => locations.includes(`${c.city}, ${c.state}`))
             : US_CITIES.slice(0, 5)
 
-        // TODO: Replace with real SERP API call
-        // const apiKey = process.env.LOCAL_RANK_API_KEY
-        // if (apiKey) {
-        //     const results = await Promise.all(targetLocations.map(async (loc) => {
-        //         const resp = await fetch(`https://api.serpapi.com/search.json?q=${encodeURIComponent(keyword)}&location=${encodeURIComponent(loc.city + ", " + loc.state)}&api_key=${apiKey}`)
-        //         const data = await resp.json()
-        //         const rank = data.organic_results?.findIndex(r => r.link?.includes(new URL(url).hostname)) + 1
-        //         return { ...loc, location: `${loc.city}, ${loc.state}`, rank: rank > 0 ? rank : null }
-        //     }))
-        //     return NextResponse.json({ results, keyword, url })
-        // }
-
-        // Simulated results — deterministic based on keyword + city hash
         const results = targetLocations.map((loc) => {
-            // Create a simple hash for deterministic simulation
             const hash = (keyword + loc.city).split("").reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)
             const absHash = Math.abs(hash)
-            const simulatedRank = (absHash % 30) + 1 // Rank 1-30
-            const hasRank = absHash % 10 !== 0 // 90% chance of ranking
+            const simulatedRank = (absHash % 30) + 1
+            const hasRank = absHash % 10 !== 0
 
             return {
                 ...loc,
