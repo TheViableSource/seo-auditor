@@ -260,17 +260,25 @@ export default function ReportsPage() {
 
                     {/* ── Executive Summary Card ── */}
                     <Card className="shadow-md border-zinc-200 dark:border-zinc-700 overflow-hidden">
-                        <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5 text-white">
+                        <div
+                            className="px-6 py-5 text-white"
+                            style={{
+                                background: settings?.brandColor
+                                    ? `linear-gradient(135deg, ${settings.brandColor}, ${settings.brandColor}dd)`
+                                    : "linear-gradient(135deg, #f97316, #ea580c)"
+                            }}
+                        >
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h2 className="text-xl font-bold">
                                         {settings?.brandName || "SEO Audit Report"}
                                     </h2>
-                                    <p className="text-orange-100 text-sm mt-0.5">
+                                    <p className="text-white/70 text-sm mt-0.5">
                                         {audit.domain} · {new Date(audit.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
                                     </p>
                                 </div>
                                 {settings?.brandLogo && (
+                                    // eslint-disable-next-line @next/next/no-img-element
                                     <img src={settings.brandLogo} alt="Logo" className="h-10 w-auto rounded" />
                                 )}
                             </div>

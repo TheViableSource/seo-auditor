@@ -14,6 +14,7 @@ import {
     Globe,
     Search,
     BarChart3,
+    Layers,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +38,8 @@ interface LinkAnalysis {
     uniqueInternalLinks: number
     links: InternalLink[]
     orphanWarning: boolean
+    pagesCrawled?: number
+    crawledUrls?: string[]
 }
 
 export default function InternalLinksPage() {
@@ -46,6 +49,58 @@ export default function InternalLinksPage() {
     const [analysis, setAnalysis] = useState<LinkAnalysis | null>(null)
     const [error, setError] = useState("")
     const [filter, setFilter] = useState<"all" | "internal" | "external" | "broken">("all")
+    const [deepCrawl, setDeepCrawl] = useState(false)
+    const [crawlProgress, setCrawlProgress] = useState("")
+
+    async function fetchPageLinks(pageUrl: string): Promise<{ links: InternalLink[]; internalCount: number; externalCount: number; brokenCount: number }> {
+        const response = await fetch("/api/audit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: pageUrl }),
+        })
+        if (!response.ok) throw new Error("Failed to fetch page")
+        const data = await response.json()
+
+        const onPage = data.categories?.find((c: { name: string }) => c.name === "on-page")
+        const internalCheck = onPage?.checks?.find((c: { id: string }) => c.id === "internal-links")
+        const brokenCheck = onPage?.checks?.find((c: { id: string }) => c.id === "broken-links")
+        const content = data.contentAnalysis || {}
+
+        const parsedLinks: InternalLink[] = []
+        const internalCount = content.internalLinks ?? internalCheck?.details?.count ?? 0
+        const externalCount = content.externalLinks ?? 0
+        const brokenCount = brokenCheck?.status === "fail" ? (brokenCheck?.details?.count ?? 1) : 0
+
+        if (data.meta?.links && Array.isArray(data.meta.links)) {
+            for (const l of data.meta.links) {
+                parsedLinks.push({
+                    href: l.href || l.url || "#",
+                    text: l.text || l.anchor || "(no anchor text)",
+                    isInternal: l.isInternal ?? true,
+                    status: l.broken ? "broken" : "ok",
+                    statusCode: l.statusCode,
+                })
+            }
+        }
+
+        if (parsedLinks.length === 0) {
+            const allChecks = data.categories?.flatMap((c: { checks: Array<{ id: string; title: string; description: string; status: string; details?: { items?: Array<{ href?: string; text?: string; url?: string; anchor?: string }> } }> }) => c.checks || []) || []
+            for (const check of allChecks) {
+                if (check.details?.items) {
+                    for (const item of check.details.items) {
+                        parsedLinks.push({
+                            href: item.href || item.url || "#",
+                            text: item.text || item.anchor || "(no anchor text)",
+                            isInternal: true,
+                            status: check.id?.includes("broken") ? "broken" : "ok",
+                        })
+                    }
+                }
+            }
+        }
+
+        return { links: parsedLinks, internalCount, externalCount, brokenCount }
+    }
 
     const analyzeLinks = async () => {
         if (!url) return
@@ -57,100 +112,76 @@ export default function InternalLinksPage() {
         setLoading(true)
         setError("")
         setAnalysis(null)
+        setCrawlProgress("")
 
         try {
-            const response = await fetch("/api/audit", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: targetUrl }),
-            })
+            // First page crawl
+            setCrawlProgress(`Crawling ${targetUrl}...`)
+            const firstPage = await fetchPageLinks(targetUrl)
+            const allLinks: InternalLink[] = [...firstPage.links]
+            const crawledUrls = [targetUrl]
+            let totalInternal = firstPage.internalCount
+            let totalExternal = firstPage.externalCount
+            let totalBroken = firstPage.brokenCount
 
-            if (!response.ok) throw new Error("Failed to fetch page")
+            // Deep crawl: follow internal links to discover more pages
+            if (deepCrawl) {
+                const maxPages = 10
+                const host = new URL(targetUrl).host
+                const discovered = new Set<string>()
 
-            const data = await response.json()
-
-            // Extract link data from audit categories
-            const onPageCategory = data.categories?.find(
-                (c: { name: string }) => c.name === "on-page"
-            )
-
-            // Build links from the on-page checks (internal/external link checks)
-            const linkChecks = onPageCategory?.checks?.filter(
-                (c: { id: string }) =>
-                    c.id === "internal-links" || c.id === "external-links" || c.id === "broken-links"
-            ) || []
-
-            // Build a simulated link analysis from the audit data
-            const internalLinkCheck = onPageCategory?.checks?.find(
-                (c: { id: string }) => c.id === "internal-links"
-            )
-            const brokenLinkCheck = onPageCategory?.checks?.find(
-                (c: { id: string }) => c.id === "broken-links"
-            )
-
-            // Parse links from the page resources or content analysis
-            const resources = data.pageResources || {}
-            const content = data.contentAnalysis || {}
-
-            // Extract internal links from meta or raw data
-            const parsedLinks: InternalLink[] = []
-            const internalCount = content.internalLinks ?? internalLinkCheck?.details?.count ?? 0
-            const externalCount = content.externalLinks ?? 0
-            const brokenCount = brokenLinkCheck?.status === "fail" ? (brokenLinkCheck?.details?.count ?? 1) : 0
-
-            // If we have link details from the raw audit data, use them
-            if (data.meta?.links && Array.isArray(data.meta.links)) {
-                for (const l of data.meta.links) {
-                    parsedLinks.push({
-                        href: l.href || l.url || "#",
-                        text: l.text || l.anchor || "(no anchor text)",
-                        isInternal: l.isInternal ?? true,
-                        status: l.broken ? "broken" : "ok",
-                        statusCode: l.statusCode,
-                    })
+                // Find internal URLs from the first page
+                for (const link of firstPage.links) {
+                    if (link.isInternal && link.href !== "#") {
+                        try {
+                            const resolved = new URL(link.href, targetUrl)
+                            if (resolved.host === host && !crawledUrls.includes(resolved.href)) {
+                                discovered.add(resolved.href)
+                            }
+                        } catch { /* invalid URL */ }
+                    }
                 }
-            }
 
-            // If no links parsed from API, create summary entries from category data
-            if (parsedLinks.length === 0) {
-                // Extract from check descriptions/details if available
-                const allChecks = data.categories?.flatMap((c: { checks: Array<{ id: string; title: string; description: string; status: string; details?: { items?: Array<{ href?: string; text?: string; url?: string; anchor?: string }> } }> }) => c.checks || []) || []
-                for (const check of allChecks) {
-                    if (check.details?.items) {
-                        for (const item of check.details.items) {
-                            parsedLinks.push({
-                                href: item.href || item.url || "#",
-                                text: item.text || item.anchor || "(no anchor text)",
-                                isInternal: true,
-                                status: check.id?.includes("broken") ? "broken" : "ok",
-                            })
-                        }
+                const toCrawl = Array.from(discovered).slice(0, maxPages)
+                for (let i = 0; i < toCrawl.length; i++) {
+                    setCrawlProgress(`Deep crawling page ${i + 2}/${toCrawl.length + 1}: ${new URL(toCrawl[i]).pathname}...`)
+                    try {
+                        const pageData = await fetchPageLinks(toCrawl[i])
+                        allLinks.push(...pageData.links)
+                        crawledUrls.push(toCrawl[i])
+                        totalInternal += pageData.internalCount
+                        totalExternal += pageData.externalCount
+                        totalBroken += pageData.brokenCount
+                    } catch {
+                        // Skip pages that fail
                     }
                 }
             }
 
-            // Build unique internal links map
-            const uniqueHrefs = new Set(parsedLinks.filter(l => l.isInternal).map(l => l.href))
+            const uniqueHrefs = new Set(allLinks.filter(l => l.isInternal).map(l => l.href))
 
             const result: LinkAnalysis = {
                 url: targetUrl,
-                totalLinks: internalCount + externalCount || parsedLinks.length,
-                internalLinks: internalCount || parsedLinks.filter(l => l.isInternal).length,
-                externalLinks: externalCount || parsedLinks.filter(l => !l.isInternal).length,
-                brokenLinks: brokenCount || parsedLinks.filter(l => l.status === "broken").length,
-                uniqueInternalLinks: uniqueHrefs.size || internalCount,
-                links: parsedLinks,
-                orphanWarning: internalCount === 0,
+                totalLinks: totalInternal + totalExternal || allLinks.length,
+                internalLinks: totalInternal || allLinks.filter(l => l.isInternal).length,
+                externalLinks: totalExternal || allLinks.filter(l => !l.isInternal).length,
+                brokenLinks: totalBroken || allLinks.filter(l => l.status === "broken").length,
+                uniqueInternalLinks: uniqueHrefs.size || totalInternal,
+                links: allLinks,
+                orphanWarning: totalInternal === 0,
+                pagesCrawled: crawledUrls.length,
+                crawledUrls,
             }
 
             setAnalysis(result)
-            toast.success("Link analysis complete!")
+            toast.success(`Link analysis complete! ${crawledUrls.length} page${crawledUrls.length > 1 ? "s" : ""} crawled.`)
         } catch (e) {
             const msg = e instanceof Error ? e.message : "Analysis failed"
             setError(msg)
             toast.error(msg)
         } finally {
             setLoading(false)
+            setCrawlProgress("")
         }
     }
 
@@ -210,6 +241,29 @@ export default function InternalLinksPage() {
                             {loading ? "Analyzing…" : "Analyze Links"}
                         </Button>
                     </div>
+                    {/* Deep Crawl Toggle */}
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                        <div className="flex items-center gap-2">
+                            <Layers className="h-4 w-4 text-violet-500" />
+                            <div>
+                                <p className="text-sm font-medium text-foreground">Deep Crawl</p>
+                                <p className="text-xs text-muted-foreground">Crawl up to 10 discovered internal pages for site-wide analysis</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setDeepCrawl(!deepCrawl)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${deepCrawl ? "bg-orange-500" : "bg-zinc-300 dark:bg-zinc-600"}`}
+                        >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${deepCrawl ? "translate-x-6" : "translate-x-1"}`} />
+                        </button>
+                    </div>
+                    {/* Crawl Progress */}
+                    {crawlProgress && (
+                        <p className="text-xs text-muted-foreground mt-3 flex items-center gap-2">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            {crawlProgress}
+                        </p>
+                    )}
                 </CardContent>
             </Card>
 
@@ -223,6 +277,17 @@ export default function InternalLinksPage() {
             {analysis && (
                 <div className="space-y-6">
                     {/* Stats Cards */}
+                    {/* Pages Crawled Banner */}
+                    {(analysis.pagesCrawled ?? 0) > 1 && (
+                        <div className="p-3 bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 rounded-lg flex items-center gap-2">
+                            <Layers className="h-4 w-4 text-violet-500" />
+                            <p className="text-sm text-violet-700 dark:text-violet-300">
+                                <span className="font-medium">{analysis.pagesCrawled} pages crawled</span>
+                                <span className="text-violet-500 ml-2">· {analysis.crawledUrls?.map(u => new URL(u).pathname).join(", ")}</span>
+                            </p>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <Card className="shadow-sm">
                             <CardContent className="p-4 text-center">
