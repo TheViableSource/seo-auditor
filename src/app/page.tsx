@@ -46,15 +46,16 @@ import { saveAudit } from "@/lib/local-storage"
 // SCORE RING COMPONENT
 // ============================================================
 function ScoreRing({ score, size = 80, strokeWidth = 6 }: { score: number; size?: number; strokeWidth?: number }) {
+  const s = Number.isFinite(score) ? score : 0
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
-  const offset = circumference - (score / 100) * circumference
+  const offset = circumference - (s / 100) * circumference
   const getColor = (s: number) => {
     if (s >= 80) return { stroke: "stroke-green-500", text: "text-green-600" }
     if (s >= 60) return { stroke: "stroke-orange-500", text: "text-orange-600" }
     return { stroke: "stroke-red-500", text: "text-red-600" }
   }
-  const colors = getColor(score)
+  const colors = getColor(s)
 
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
@@ -64,7 +65,7 @@ function ScoreRing({ score, size = 80, strokeWidth = 6 }: { score: number; size?
           className={`${colors.stroke} transition-all duration-1000`}
           strokeDasharray={circumference} strokeDashoffset={offset} />
       </svg>
-      <span className={`absolute text-lg font-bold ${colors.text}`}>{score}</span>
+      <span className={`absolute text-lg font-bold ${colors.text}`}>{s}</span>
     </div>
   )
 }

@@ -29,10 +29,11 @@ import { generatePdfFromElement } from "@/lib/pdf-report"
 /*  Score ring                                                          */
 /* ------------------------------------------------------------------ */
 function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
+    const s = Number.isFinite(score) ? score : 0
     const radius = (size - 10) / 2
     const circumference = 2 * Math.PI * radius
-    const progress = (score / 100) * circumference
-    const color = score >= 80 ? "#22c55e" : score >= 60 ? "#f59e0b" : "#ef4444"
+    const progress = (s / 100) * circumference
+    const color = s >= 80 ? "#22c55e" : s >= 60 ? "#f59e0b" : "#ef4444"
 
     return (
         <div className="relative" style={{ width: size, height: size }}>
@@ -43,7 +44,7 @@ function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
                     strokeLinecap="round" className="transition-all duration-700" />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold" style={{ color }}>{score}</span>
+                <span className="text-2xl font-bold" style={{ color }}>{s}</span>
                 <span className="text-[10px] text-muted-foreground">/ 100</span>
             </div>
         </div>
