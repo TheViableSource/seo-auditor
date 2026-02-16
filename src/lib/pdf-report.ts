@@ -335,17 +335,21 @@ export async function generatePdfReport(
     })
 
     /* ═══════════════ ISSUE DETAILS ═══════════════ */
+    // Start issues on a new page, then flow continuously
+    pdf.addPage()
+    y = MT
+
     for (const cat of categories) {
         const failedChecks = cat.checks.filter(c => c.status === "fail" || c.status === "warning")
         if (failedChecks.length === 0) continue
 
-        pdf.addPage()
-        y = MT
+        // Category header — ensure it fits with at least one issue card (~30mm)
+        y = ensureSpace(pdf, y, 30)
 
-        // Page header
+        // Category divider
         pdf.setFillColor(...brandColor)
-        pdf.rect(ML, y, CW, 0.8, "F")
-        y += 6
+        pdf.rect(ML, y, CW, 0.6, "F")
+        y += 5
         pdf.setFontSize(9)
         pdf.setFont("helvetica", "bold")
         pdf.setTextColor(...brandColor)
@@ -353,31 +357,31 @@ export async function generatePdfReport(
         pdf.setFont("helvetica", "normal")
         pdf.setTextColor(156, 163, 175)
         pdf.text(`${failedChecks.length} issue${failedChecks.length !== 1 ? "s" : ""}`, PW - MR, y, { align: "right" })
-        y += 10
+        y += 6
 
         for (const check of failedChecks) {
             // Measure wrapped text at their actual font sizes
-            pdf.setFontSize(10)
-            const titleLines = wrapText(pdf, check.title || "", CW - 45)
-            const titleLH = 4.5  // line height for 10pt
+            pdf.setFontSize(9)
+            const titleLines = wrapText(pdf, check.title || "", CW - 40)
+            const titleLH = 4
 
-            pdf.setFontSize(8)
-            const descLines = wrapText(pdf, check.description || "", CW - 20)
-            const descLH = 3.5  // line height for 8pt
+            pdf.setFontSize(7)
+            const descLines = wrapText(pdf, check.description || "", CW - 16)
+            const descLH = 3
 
-            pdf.setFontSize(7.5)
-            const recLines = check.recommendation ? wrapText(pdf, `Recommendation: ${check.recommendation}`, CW - 24) : []
-            const recLH = 3.5   // line height for 7.5pt
+            pdf.setFontSize(7)
+            const recLines = check.recommendation ? wrapText(pdf, `Rec: ${check.recommendation}`, CW - 20) : []
+            const recLH = 3
 
-            // Calculate precise card height
+            // Calculate card height
             const titleH = titleLines.length * titleLH
             const descH = descLines.length * descLH
-            const recH = recLines.length > 0 ? recLines.length * recLH + 10 : 0
-            const needed = 10 + titleH + 4 + descH + recH + 6
+            const recH = recLines.length > 0 ? recLines.length * recLH + 6 : 0
+            const needed = 6 + titleH + 2 + descH + recH + 4
 
             y = ensureSpace(pdf, y, needed)
 
-            // Severity indicator bar
+            // Severity color bar
             const sevColor: [number, number, number] =
                 check.severity === "critical" ? [239, 68, 68] :
                     check.severity === "major" ? [245, 158, 11] :
@@ -385,78 +389,76 @@ export async function generatePdfReport(
                             [156, 163, 175]
 
             pdf.setFillColor(...sevColor)
-            pdf.rect(ML, y, 1.5, needed - 4, "F")
+            pdf.rect(ML, y, 1.2, needed - 2, "F")
 
-            // Card bg
-            pdf.setDrawColor(229, 231, 235)
-            pdf.setLineWidth(0.2)
-            pdf.roundedRect(ML + 3, y, CW - 3, needed - 4, 2, 2, "S")
+            // Card outline
+            pdf.setDrawColor(235, 235, 235)
+            pdf.setLineWidth(0.15)
+            pdf.roundedRect(ML + 2, y, CW - 2, needed - 2, 1.5, 1.5, "S")
 
-            // Title (wrapped)
-            pdf.setFontSize(10)
+            // Title
+            pdf.setFontSize(9)
             pdf.setFont("helvetica", "bold")
             pdf.setTextColor(17, 24, 39)
-            pdf.text(titleLines, ML + 8, y + 6)
+            pdf.text(titleLines, ML + 6, y + 4.5)
 
             // Severity badge
             pdf.setFillColor(...sevColor)
-            pdf.roundedRect(PW - MR - 22, y + 2, 20, 5, 1.5, 1.5, "F")
-            pdf.setFontSize(6)
+            const sevLabel = (check.severity || "info").toUpperCase()
+            pdf.roundedRect(PW - MR - 18, y + 1.5, 16, 4, 1, 1, "F")
+            pdf.setFontSize(5.5)
             pdf.setFont("helvetica", "bold")
             pdf.setTextColor(255, 255, 255)
-            pdf.text((check.severity || "info").toUpperCase(), PW - MR - 12, y + 5.5, { align: "center" })
+            pdf.text(sevLabel, PW - MR - 10, y + 4.3, { align: "center" })
 
-            // Description (wrapped)
-            let iy = y + 6 + titleH + 3
-            pdf.setFontSize(8)
+            // Description
+            let iy = y + 4.5 + titleH + 1
+            pdf.setFontSize(7)
             pdf.setFont("helvetica", "normal")
             pdf.setTextColor(107, 114, 128)
-            pdf.text(descLines, ML + 8, iy)
+            pdf.text(descLines, ML + 6, iy)
             iy += descH
 
-            // Recommendation (wrapped)
+            // Recommendation
             if (recLines.length > 0) {
-                iy += 4
-                const recBoxH = recLines.length * recLH + 6
+                iy += 2
+                const recBoxH = recLines.length * recLH + 4
                 pdf.setFillColor(240, 253, 244)
-                pdf.roundedRect(ML + 8, iy - 3, CW - 16, recBoxH, 1.5, 1.5, "F")
-                pdf.setFontSize(7.5)
+                pdf.roundedRect(ML + 6, iy - 2, CW - 12, recBoxH, 1, 1, "F")
+                pdf.setFontSize(6.5)
                 pdf.setFont("helvetica", "normal")
                 pdf.setTextColor(21, 128, 61)
-                pdf.text(recLines, ML + 11, iy + 1)
+                pdf.text(recLines, ML + 8, iy + 1)
             }
 
             y += needed
         }
+
+        y += 4  // Small gap between categories
     }
 
-    /* ═══════════════ FOOTER PAGE ═══════════════ */
-    pdf.addPage()
-    y = PH / 2 - 20
+    /* ═══════════════ FOOTER ═══════════════ */
+    y = ensureSpace(pdf, y, 35)
+    y += 8
 
     // Divider
     pdf.setFillColor(...brandColor)
-    pdf.rect(PW / 2 - 15, y, 30, 1.2, "F")
-    y += 12
+    pdf.rect(PW / 2 - 12, y, 24, 0.8, "F")
+    y += 8
 
-    pdf.setFontSize(18)
+    pdf.setFontSize(12)
     pdf.setFont("helvetica", "bold")
     pdf.setTextColor(17, 24, 39)
     pdf.text("Next Steps", PW / 2, y, { align: "center" })
-    y += 10
-
-    pdf.setFontSize(10)
-    pdf.setFont("helvetica", "normal")
-    pdf.setTextColor(107, 114, 128)
-    const nextLines = wrapText(
-        pdf,
-        "Address the critical and major issues identified in this report to improve your site's SEO performance. Re-run the audit after making changes to track your progress.",
-        CW - 40
-    )
-    pdf.text(nextLines, PW / 2, y, { align: "center", maxWidth: CW - 40 })
-    y += nextLines.length * 5 + 15
+    y += 6
 
     pdf.setFontSize(8)
+    pdf.setFont("helvetica", "normal")
+    pdf.setTextColor(107, 114, 128)
+    pdf.text("Address critical and major issues to improve SEO. Re-audit after changes to track progress.", PW / 2, y, { align: "center", maxWidth: CW - 20 })
+    y += 10
+
+    pdf.setFontSize(7)
     pdf.setTextColor(200, 200, 200)
     pdf.text(`Report generated by ${brandName} • ${fmtDate(audit.createdAt)}`, PW / 2, y, { align: "center" })
 
