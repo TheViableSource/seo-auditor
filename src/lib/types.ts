@@ -4,7 +4,7 @@
 
 export type CheckStatus = "pass" | "fail" | "warning" | "info"
 export type CheckSeverity = "critical" | "major" | "minor" | "info"
-export type AuditCategoryName = "on-page" | "technical" | "accessibility" | "structured-data" | "security" | "robots-sitemap" | "aeo" | "geo"
+export type AuditCategoryName = "on-page" | "technical" | "accessibility" | "structured-data" | "security" | "robots-sitemap" | "aeo" | "geo" | "performance" | "html-validation" | "safe-browsing"
 
 export interface AuditCheck {
   id: string

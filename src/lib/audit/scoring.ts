@@ -51,24 +51,31 @@ export function scoreCategory(
  */
 export function calculateOverallScore(categories: AuditCategory[]): number {
     const weights: Record<AuditCategoryName, number> = {
-        "on-page": 0.25,
-        technical: 0.20,
-        accessibility: 0.12,
-        "structured-data": 0.10,
-        security: 0.08,
-        "robots-sitemap": 0.08,
-        aeo: 0.10,
+        "on-page": 0.20,
+        technical: 0.15,
+        accessibility: 0.10,
+        "structured-data": 0.08,
+        security: 0.06,
+        "robots-sitemap": 0.06,
+        aeo: 0.08,
         geo: 0.07,
+        performance: 0.10,
+        "html-validation": 0.05,
+        "safe-browsing": 0.05,
     }
 
     let totalWeight = 0
     let weightedSum = 0
 
     for (const cat of categories) {
-        const w = weights[cat.name] || 0.25
-        weightedSum += cat.score * w
+        const w = weights[cat.name] ?? 0
+        // Skip categories where all checks are info-only (API unavailable)
+        const allInfo = cat.checks.every((c) => c.status === "info")
+        if (allInfo) continue
         totalWeight += w
+        weightedSum += cat.score * w
     }
 
+    if (totalWeight === 0) return 0
     return Math.round(weightedSum / totalWeight)
 }

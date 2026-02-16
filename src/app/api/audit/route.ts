@@ -10,6 +10,9 @@ import { analyzeRobotsSitemap } from "@/lib/audit/robots-sitemap";
 import { analyzeSecurityHeaders } from "@/lib/audit/security";
 import { analyzeAEO } from "@/lib/audit/aeo";
 import { analyzeGEO } from "@/lib/audit/geo";
+import { analyzePageSpeed } from "@/lib/audit/pagespeed";
+import { analyzeHTMLValidation } from "@/lib/audit/html-validator";
+import { analyzeSafeBrowsing } from "@/lib/audit/safe-browsing";
 import { analyzeContent, extractPageResources, extractSocialPreview } from "@/lib/audit/content";
 import { scoreCategory, calculateOverallScore } from "@/lib/audit/scoring";
 
@@ -74,8 +77,11 @@ export async function POST(request: Request) {
     });
 
     // --- RUN ALL ANALYZERS (parallel where possible) ---
-    const [robotsSitemapChecks] = await Promise.all([
+    const [robotsSitemapChecks, pagespeedChecks, htmlValidationChecks, safeBrowsingChecks] = await Promise.all([
       analyzeRobotsSitemap(url),
+      analyzePageSpeed(url),
+      analyzeHTMLValidation(html),
+      analyzeSafeBrowsing(url),
     ]);
 
     const onPageChecks = analyzeOnPage($, url);
@@ -101,6 +107,9 @@ export async function POST(request: Request) {
       scoreCategory("robots-sitemap", "Robots & Sitemap", robotsSitemapChecks),
       scoreCategory("aeo", "Answer Engine (AEO)", aeoChecks),
       scoreCategory("geo", "Generative Engine (GEO)", geoChecks),
+      scoreCategory("performance", "Performance", pagespeedChecks),
+      scoreCategory("html-validation", "HTML Validation", htmlValidationChecks),
+      scoreCategory("safe-browsing", "Safe Browsing", safeBrowsingChecks),
     ];
 
     const overallScore = calculateOverallScore(categories);

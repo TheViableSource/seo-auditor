@@ -34,6 +34,9 @@ import {
   ArrowRight,
   MessageCircle,
   Sparkles,
+  Gauge,
+  FileWarning,
+  ShieldAlert,
 } from "lucide-react"
 import type { AuditResult, AuditCategory, AuditCheck, CheckStatus, ContentAnalysisData, PageResourcesData, SocialPreviewData } from "@/lib/types"
 import { AuditResultsSkeleton } from "@/components/AuditResultsSkeleton"
@@ -100,6 +103,9 @@ const categoryIcons: Record<string, React.ReactNode> = {
   "robots-sitemap": <Bot className="h-4 w-4" />,
   aeo: <MessageCircle className="h-4 w-4" />,
   geo: <Sparkles className="h-4 w-4" />,
+  performance: <Gauge className="h-4 w-4" />,
+  "html-validation": <FileWarning className="h-4 w-4" />,
+  "safe-browsing": <ShieldAlert className="h-4 w-4" />,
 }
 
 // ============================================================
@@ -592,7 +598,7 @@ export default function Home() {
       {/* Header */}
       <div className="flex flex-col gap-2">
         <h2 className="text-3xl font-bold tracking-tight text-foreground">SEO Auditor</h2>
-        <p className="text-muted-foreground">Enter a URL to run a comprehensive SEO analysis across 60 checks, including AEO &amp; GEO.</p>
+        <p className="text-muted-foreground">Enter a URL to run a comprehensive SEO analysis across 75+ checks, including AEO, GEO &amp; Performance.</p>
       </div>
 
       {/* Input */}
