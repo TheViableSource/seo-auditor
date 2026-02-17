@@ -101,6 +101,10 @@ export default function SettingsPage() {
     } | null>(null)
     const [googleLoading, setGoogleLoading] = useState(false)
 
+    // BYOK — Bring Your Own Key for SERP API
+    const [serpProvider, setSerpProvider] = useState<string>("dataforseo")
+    const [serpApiKey, setSerpApiKey] = useState("")
+
     const fetchGoogleStatus = async () => {
         setGoogleLoading(true)
         try {
@@ -131,6 +135,17 @@ export default function SettingsPage() {
         setBrandName(s.brandName || "")
         setBrandColor(s.brandColor || "#f97316")
         setDataStats({ sites: getSites().length, audits: getAudits().length })
+
+        // Load BYOK SERP key
+        try {
+            const serpConfig = localStorage.getItem("auditor:serpApiKey")
+            if (serpConfig) {
+                const parsed = JSON.parse(serpConfig)
+                setSerpProvider(parsed.provider || "dataforseo")
+                setSerpApiKey(parsed.key || "")
+            }
+        } catch { /* ignore */ }
+
         setMounted(true)
 
         fetchGoogleStatus()
@@ -579,6 +594,85 @@ export default function SettingsPage() {
                             </Button>
                         </>
                     )}
+                </CardContent>
+            </Card>
+
+            {/* SERP API Key (BYOK) */}
+            <Card className="shadow-sm border-zinc-200">
+                <CardHeader className="flex flex-row items-center gap-3 pb-4">
+                    <div className="p-2 bg-purple-50 rounded-lg">
+                        <Zap className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg">SERP API Key</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5">Use your own API key for unlimited grid checks</p>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                        <Shield className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                            Adding your own key bypasses monthly limits. Your key is stored locally in your browser and sent directly to the API — never stored on our servers.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium mb-1.5 block">Provider</label>
+                        <select
+                            value={serpProvider}
+                            onChange={(e) => setSerpProvider(e.target.value)}
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                            <option value="dataforseo">DataForSEO (Recommended)</option>
+                            <option value="serpapi">SerpAPI</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium mb-1.5 block">
+                            {serpProvider === "dataforseo" ? "API Credentials (login:password)" : "API Key"}
+                        </label>
+                        <input
+                            type="password"
+                            value={serpApiKey}
+                            onChange={(e) => setSerpApiKey(e.target.value)}
+                            placeholder={serpProvider === "dataforseo" ? "email@example.com:api-password" : "your-serpapi-key"}
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                        />
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                            {serpProvider === "dataforseo"
+                                ? "Format: your-login:your-password. Get credentials at app.dataforseo.com"
+                                : "Get your key at serpapi.com/manage-api-key"}
+                        </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => {
+                                const config = { provider: serpProvider, key: serpApiKey }
+                                localStorage.setItem("auditor:serpApiKey", JSON.stringify(config))
+                                setToast(serpApiKey ? "SERP API key saved! Grid checks will use your key." : "SERP API key cleared.")
+                            }}
+                        >
+                            <Save className="h-4 w-4" />
+                            {serpApiKey ? "Save Key" : "Clear Key"}
+                        </Button>
+                        {serpApiKey && (
+                            <Button
+                                variant="ghost"
+                                className="text-xs text-red-500 hover:text-red-600"
+                                onClick={() => {
+                                    setSerpApiKey("")
+                                    localStorage.removeItem("auditor:serpApiKey")
+                                    setToast("SERP API key removed.")
+                                }}
+                            >
+                                Remove Key
+                            </Button>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
 

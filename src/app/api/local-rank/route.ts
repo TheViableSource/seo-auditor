@@ -1,4 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
+import {
+    canRunGridCheck,
+    incrementGridUsage,
+    getGridUsage,
+    getGridRemaining,
+    toGridTier,
+    GRID_TIER_LIMITS,
+    type GridTier,
+} from "@/lib/grid-usage"
 
 // ============================================================
 // LOCAL RANK CHECK API
@@ -7,6 +17,11 @@ import { NextRequest, NextResponse } from "next/server"
 //   1. "cities" — checks preset US cities (legacy)
 //   2. "grid"  — generates NxN grid points around a business
 //      location and checks rank at each point
+//
+// Rate limiting:
+//   - Enforced per-user (JWT ID or IP fallback)
+//   - Tier caps: Free/Starter: 0, Pro: 20, Agency: 100, Enterprise: 500
+//   - BYOK (user-provided API key) bypasses rate limits
 //
 // Supported SERP providers (set via env vars):
 //   - DataForSEO (recommended): DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD
@@ -148,9 +163,11 @@ async function fetchDataForSEO(
     lat: number,
     lng: number,
     clientDomain: string,
+    overrideLogin?: string,
+    overridePassword?: string,
 ): Promise<{ rank: number | null; competitors: Competitor[] }> {
-    const login = process.env.DATAFORSEO_LOGIN!
-    const password = process.env.DATAFORSEO_PASSWORD!
+    const login = overrideLogin || process.env.DATAFORSEO_LOGIN!
+    const password = overridePassword || process.env.DATAFORSEO_PASSWORD!
     const auth = Buffer.from(`${login}:${password}`).toString("base64")
 
     const response = await fetch("https://api.dataforseo.com/v3/serp/google/maps/live/advanced", {
@@ -235,8 +252,9 @@ async function fetchSerpAPI(
     lat: number,
     lng: number,
     clientDomain: string,
+    overrideKey?: string,
 ): Promise<{ rank: number | null; competitors: Competitor[] }> {
-    const apiKey = process.env.SERPAPI_KEY!
+    const apiKey = overrideKey || process.env.SERPAPI_KEY!
 
     const params = new URLSearchParams({
         engine: "google_maps",
@@ -358,10 +376,32 @@ function fetchSimulated(
 // ══════════════════════════════════════════════════════════════
 type Provider = "dataforseo" | "serpapi" | "simulated"
 
-function detectProvider(): Provider {
+function detectProvider(byokProvider?: string): Provider {
+    // BYOK takes precedence
+    if (byokProvider === "dataforseo" || byokProvider === "serpapi") return byokProvider
+    // Then check server env vars
     if (process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) return "dataforseo"
     if (process.env.SERPAPI_KEY) return "serpapi"
     return "simulated"
+}
+
+/** Resolve user identity for rate limiting */
+async function resolveUser(request: NextRequest): Promise<{ userId: string; tier: GridTier }> {
+    try {
+        const session = await auth()
+        if (session?.user?.id) {
+            // TODO: look up workspace plan from DB for accurate tier
+            // For now, use "agency" as default for logged-in users
+            return { userId: session.user.id, tier: "agency" }
+        }
+    } catch {
+        // Auth not configured or failed — fall through
+    }
+
+    // Fallback: IP-based identification with free tier
+    const forwarded = request.headers.get("x-forwarded-for")
+    const ip = forwarded?.split(",")[0]?.trim() || "anonymous"
+    return { userId: `ip:${ip}`, tier: "free" }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -379,7 +419,10 @@ export async function POST(request: NextRequest) {
 
         // ── GRID MODE ──
         if (mode === "grid") {
-            const { centerLat, centerLng, gridSize = 5, radiusMiles = 5 } = body
+            const {
+                centerLat, centerLng, gridSize = 5, radiusMiles = 5,
+                userApiKey, userApiProvider, userTier,
+            } = body
 
             if (!centerLat || !centerLng) {
                 return NextResponse.json({ error: "centerLat and centerLng required for grid mode" }, { status: 400 })
@@ -388,7 +431,35 @@ export async function POST(request: NextRequest) {
             const clampedSize = Math.min(Math.max(gridSize, 3), 9)
             const clampedRadius = Math.min(Math.max(radiusMiles, 0.5), 50)
             const points = generateGridPoints(centerLat, centerLng, clampedSize, clampedRadius)
-            const provider = detectProvider()
+
+            // BYOK: user-provided API key bypasses rate limiting
+            const isBYOK = !!userApiKey
+            const provider = isBYOK
+                ? detectProvider(userApiProvider)
+                : detectProvider()
+
+            // Rate limiting (only for server-key usage, not BYOK or simulated)
+            const { userId, tier: authTier } = await resolveUser(request)
+            const effectiveTier = userTier ? toGridTier(userTier) : authTier
+
+            if (!isBYOK && provider !== "simulated") {
+                const limit = GRID_TIER_LIMITS[effectiveTier]
+                const usage = getGridUsage(userId)
+
+                if (!canRunGridCheck(userId, effectiveTier)) {
+                    return NextResponse.json({
+                        error: "Monthly grid check limit reached",
+                        limit,
+                        used: usage.used,
+                        remaining: 0,
+                        tier: effectiveTier,
+                        month: usage.month,
+                        message: effectiveTier === "free" || effectiveTier === "starter"
+                            ? "Upgrade to Pro or add your own API key in Settings to unlock live grid checks."
+                            : "You've used all your grid checks this month. Add your own API key in Settings for unlimited checks.",
+                    }, { status: 429 })
+                }
+            }
 
             // Extract client domain
             let clientDomain = "your-site.com"
@@ -398,11 +469,15 @@ export async function POST(request: NextRequest) {
             let gridResults
 
             if (provider === "dataforseo") {
+                // Parse BYOK credentials (format: "login:password")
+                const byokLogin = isBYOK ? userApiKey.split(":")[0] : undefined
+                const byokPass = isBYOK ? userApiKey.split(":")[1] : undefined
+
                 // Parallel fetch — DataForSEO allows concurrent requests
                 gridResults = await Promise.all(
                     points.map(async (pt) => {
                         try {
-                            const { rank, competitors } = await fetchDataForSEO(keyword, pt.lat, pt.lng, clientDomain)
+                            const { rank, competitors } = await fetchDataForSEO(keyword, pt.lat, pt.lng, clientDomain, byokLogin, byokPass)
                             return { ...pt, rank, competitors }
                         } catch (err) {
                             console.error(`DataForSEO error at (${pt.lat}, ${pt.lng}):`, err)
@@ -415,7 +490,7 @@ export async function POST(request: NextRequest) {
                 gridResults = []
                 for (const pt of points) {
                     try {
-                        const { rank, competitors } = await fetchSerpAPI(keyword, pt.lat, pt.lng, clientDomain)
+                        const { rank, competitors } = await fetchSerpAPI(keyword, pt.lat, pt.lng, clientDomain, isBYOK ? userApiKey : undefined)
                         gridResults.push({ ...pt, rank, competitors })
                     } catch (err) {
                         console.error(`SerpAPI error at (${pt.lat}, ${pt.lng}):`, err)
@@ -432,6 +507,19 @@ export async function POST(request: NextRequest) {
                 })
             }
 
+            // Track usage (only for server-key, non-simulated checks)
+            let usageInfo = { used: 0, remaining: 0, limit: 0, month: "" }
+            if (!isBYOK && provider !== "simulated") {
+                const updated = incrementGridUsage(userId)
+                const limit = GRID_TIER_LIMITS[effectiveTier]
+                usageInfo = {
+                    used: updated.count,
+                    remaining: Math.max(0, limit - updated.count),
+                    limit,
+                    month: updated.month,
+                }
+            }
+
             return NextResponse.json({
                 mode: "grid",
                 gridResults,
@@ -441,6 +529,9 @@ export async function POST(request: NextRequest) {
                 url,
                 provider,
                 simulated: provider === "simulated",
+                byok: isBYOK,
+                tier: effectiveTier,
+                usage: usageInfo,
                 ...(provider === "simulated" ? {
                     message: "⚠️ Using simulated data. Set DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD or SERPAPI_KEY in .env.local for live SERP data.",
                 } : {}),

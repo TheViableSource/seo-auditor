@@ -254,6 +254,8 @@ export default function RankingsPage() {
     const [radiusMiles, setRadiusMiles] = useState(5)
     const [gridResults, setGridResults] = useState<GridPoint[]>([])
     const [gridProvider, setGridProvider] = useState<string>("")
+    const [gridUsage, setGridUsage] = useState<{ used: number; remaining: number; limit: number } | null>(null)
+    const [gridError, setGridError] = useState<string>("")
 
     // Business address state
     const [businessAddress, setBusinessAddress] = useState("")
@@ -1166,7 +1168,13 @@ export default function RankingsPage() {
                                         onClick={async () => {
                                             if (!localRankKeyword.trim() || !selectedSite || !businessLocation) return
                                             setLocalRankLoading(true)
+                                            setGridError("")
                                             try {
+                                                // Check for BYOK key from Settings
+                                                const serpConfig = localStorage.getItem("auditor:serpApiKey")
+                                                const byok = serpConfig ? JSON.parse(serpConfig) : null
+                                                const settings = getSettings()
+
                                                 const res = await fetch("/api/local-rank", {
                                                     method: "POST",
                                                     headers: { "Content-Type": "application/json" },
@@ -1178,15 +1186,30 @@ export default function RankingsPage() {
                                                         centerLng: businessLocation.lng,
                                                         gridSize,
                                                         radiusMiles,
+                                                        userTier: settings.tier,
+                                                        ...(byok?.key ? {
+                                                            userApiKey: byok.key,
+                                                            userApiProvider: byok.provider,
+                                                        } : {}),
                                                     }),
                                                 })
                                                 const data = await res.json()
+
+                                                if (res.status === 429) {
+                                                    setGridError(data.message || "Monthly grid check limit reached.")
+                                                    setGridUsage({ used: data.used || 0, remaining: 0, limit: data.limit || 0 })
+                                                    return
+                                                }
+
                                                 if (data.gridResults) {
                                                     setGridResults(data.gridResults)
                                                     setGridProvider(data.provider || "simulated")
+                                                    if (data.usage && data.usage.limit > 0) {
+                                                        setGridUsage(data.usage)
+                                                    }
                                                 }
                                             } catch {
-                                                // handle error silently
+                                                setGridError("Grid check failed. Please try again.")
                                             } finally {
                                                 setLocalRankLoading(false)
                                             }
@@ -1195,6 +1218,20 @@ export default function RankingsPage() {
                                         {localRankLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                                         {localRankLoading ? `Checking ${gridSize * gridSize} grid points...` : `Run ${gridSize}×${gridSize} Grid Check`}
                                     </Button>
+
+                                    {/* Usage counter */}
+                                    {gridUsage && gridUsage.limit > 0 && (
+                                        <p className="text-xs text-muted-foreground text-center">
+                                            {gridUsage.remaining} of {gridUsage.limit} grid checks remaining this month
+                                        </p>
+                                    )}
+
+                                    {/* Rate limit error */}
+                                    {gridError && (
+                                        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30">
+                                            <p className="text-xs text-red-600 dark:text-red-400">{gridError}</p>
+                                        </div>
+                                    )}
 
                                     {!businessLocation && (
                                         <p className="text-xs text-muted-foreground text-center">
@@ -1211,8 +1248,8 @@ export default function RankingsPage() {
                                         <div className="flex items-center justify-between">
                                             <CardTitle className="text-base">Local Rank Grid</CardTitle>
                                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${gridProvider === "simulated"
-                                                    ? "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400"
-                                                    : "bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400"
+                                                ? "bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400"
+                                                : "bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400"
                                                 }`}>
                                                 {gridProvider === "simulated" ? "⚠ Simulated" : `✓ Live · ${gridProvider}`}
                                             </span>
