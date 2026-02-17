@@ -23,12 +23,13 @@ const REDIRECT_URI =
         ? `${process.env.NEXTAUTH_URL}/api/auth/google/callback`
         : "http://localhost:3000/api/auth/google/callback")
 
-// Scopes — Phase 1: Search Console only
-// Phase 2 will add analytics.readonly, business.manage, adwords
+// Scopes — Search Console, Analytics, and Google Business Profile
 const SCOPES = [
-    "https://www.googleapis.com/auth/webmasters.readonly", // Search Console
-    "https://www.googleapis.com/auth/userinfo.email",       // User email
-    "https://www.googleapis.com/auth/userinfo.profile",     // User profile
+    "https://www.googleapis.com/auth/webmasters.readonly",       // Search Console
+    "https://www.googleapis.com/auth/analytics.readonly",        // Google Analytics (GA4)
+    "https://www.googleapis.com/auth/business.manage",           // Google Business Profile
+    "https://www.googleapis.com/auth/userinfo.email",            // User email
+    "https://www.googleapis.com/auth/userinfo.profile",          // User profile
 ]
 
 // ---------------------------------------------------------------------------

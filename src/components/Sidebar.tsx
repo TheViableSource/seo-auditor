@@ -24,6 +24,8 @@ import {
   HelpCircle,
   Users,
   Map,
+  Plug,
+  ListChecks,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -176,6 +178,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   // Top-level standalone links
   const topLinks: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/tasks", label: "Action Items", icon: ListChecks },
     { href: "/", label: "Quick Audit", icon: Search },
   ]
 
@@ -190,6 +193,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
         { href: "/audits", label: "Audit History", icon: History, badge: mounted ? auditsCount : undefined },
         { href: "/compare", label: "Compare", icon: GitCompareArrows },
         { href: "/reports", label: "Reports", icon: FileText },
+        { href: "/integrations", label: "Integrations", icon: Plug },
       ],
     },
     {

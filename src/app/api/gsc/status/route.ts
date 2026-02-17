@@ -51,6 +51,11 @@ export async function GET() {
             permissionLevel: s.permissionLevel,
         }))
 
+        // Determine which services are available based on granted scopes
+        const grantedScope = tokens?.scope || ""
+        const hasAnalytics = grantedScope.includes("analytics.readonly")
+        const hasGMB = grantedScope.includes("business.manage")
+
         return NextResponse.json({
             configured: true,
             connected: true,
@@ -58,9 +63,9 @@ export async function GET() {
             sites,
             services: {
                 searchConsole: true,
-                analytics: false, // Phase 2
-                myBusiness: false, // Phase 2
-                ads: false, // Phase 2
+                analytics: hasAnalytics,
+                myBusiness: hasGMB,
+                ads: false, // Future
             },
         })
     } catch (error: unknown) {

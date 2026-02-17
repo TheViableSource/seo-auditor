@@ -299,6 +299,15 @@ export default function RankingsPage() {
 
     useEffect(() => {
         setMounted(true)
+        // Restore persisted business address
+        try {
+            const saved = localStorage.getItem("auditor:businessLocation")
+            if (saved) {
+                const loc = JSON.parse(saved) as BusinessLocation
+                setBusinessLocation(loc)
+                setBusinessAddress(loc.label || "")
+            }
+        } catch { /* ignore */ }
     }, [])
 
     useEffect(() => {
@@ -1112,6 +1121,39 @@ export default function RankingsPage() {
                                                 }}
                                             >
                                                 {geocoding ? <Loader2 className="h-3 w-3 animate-spin" /> : "Set Location"}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={geocoding}
+                                                className="text-xs border-orange-300 gap-1"
+                                                onClick={() => {
+                                                    if (!navigator.geolocation) return
+                                                    setGeocoding(true)
+                                                    navigator.geolocation.getCurrentPosition(
+                                                        async (pos) => {
+                                                            try {
+                                                                const { latitude, longitude } = pos.coords
+                                                                // Reverse geocode
+                                                                const res = await fetch(
+                                                                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+                                                                    { headers: { "User-Agent": "AuditorPro/1.0" } }
+                                                                )
+                                                                const data = await res.json()
+                                                                const label = data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+                                                                const loc: BusinessLocation = { lat: latitude, lng: longitude, label }
+                                                                setBusinessLocation(loc)
+                                                                setBusinessAddress(label)
+                                                                localStorage.setItem("auditor:businessLocation", JSON.stringify(loc))
+                                                            } catch { /* silent */ }
+                                                            finally { setGeocoding(false) }
+                                                        },
+                                                        () => setGeocoding(false),
+                                                        { enableHighAccuracy: true, timeout: 10000 }
+                                                    )
+                                                }}
+                                            >
+                                                <MapPin className="h-3 w-3" /> Use My Location
                                             </Button>
                                         </div>
                                         {businessLocation && (
