@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { useActiveSite } from "@/context/ActiveSiteContext"
 import {
     ArrowLeft,
     ArrowRight,
@@ -92,14 +93,20 @@ function StatusIcon({ status }: { status: string }) {
 /* ------------------------------------------------------------------ */
 function AuditPicker({ onCompare }: { onCompare: (a: string, b: string) => void }) {
     const [sites, setSites] = useState<StoredSite[]>([])
+    const { activeSiteId } = useActiveSite()
     const [selectedSite, setSelectedSite] = useState<string | null>(null)
     const [comparableAudits, setComparableAudits] = useState<StoredAudit[]>([])
     const [selectedA, setSelectedA] = useState<string | null>(null)
     const [selectedB, setSelectedB] = useState<string | null>(null)
 
     useEffect(() => {
-        setSites(getSites())
-    }, [])
+        const allSites = getSites()
+        setSites(allSites)
+        // Pre-select from global active site
+        if (activeSiteId && allSites.some(s => s.id === activeSiteId)) {
+            setSelectedSite(activeSiteId)
+        }
+    }, [activeSiteId])
 
     useEffect(() => {
         if (selectedSite) {

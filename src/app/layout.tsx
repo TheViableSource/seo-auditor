@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { Sidebar } from "@/components/Sidebar";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { WelcomeModal } from "@/components/WelcomeModal";
+import { ActiveSiteProvider } from "@/context/ActiveSiteContext";
 
 export const metadata: Metadata = {
   title: "SEO Auditor Dashboard",
@@ -19,11 +20,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased flex h-screen font-sans">
         <ToastProvider>
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto">
-            {children}
-          </main>
-          <WelcomeModal />
+          <ActiveSiteProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto">
+              {children}
+            </main>
+            <WelcomeModal />
+          </ActiveSiteProvider>
         </ToastProvider>
       </body>
     </html>

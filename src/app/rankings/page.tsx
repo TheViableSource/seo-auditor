@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useActiveSite } from "@/context/ActiveSiteContext"
 import {
     ArrowLeft,
     BarChart3,
@@ -240,8 +241,7 @@ function RankTrend({ current, previous }: { current: number | null | undefined; 
 export default function RankingsPage() {
     const router = useRouter()
     const [mounted, setMounted] = useState(false)
-    const [sites, setSites] = useState<StoredSite[]>([])
-    const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null)
+    const { activeSiteId: selectedSiteId, setActiveSiteId: setSelectedSiteId, sites, ready: sitesReady } = useActiveSite()
     const [activeTab, setActiveTab] = useState<"competitors" | "keywords" | "local">("competitors")
 
     // Local rank tracking state
@@ -283,14 +283,6 @@ export default function RankingsPage() {
     // Rank histories for sparklines
     const [rankHistories, setRankHistories] = useState<Record<string, StoredRankSnapshot[]>>({})
 
-    const load = useCallback(() => {
-        const allSites = getSites()
-        setSites(allSites)
-        if (!selectedSiteId && allSites.length > 0) {
-            setSelectedSiteId(allSites[0].id)
-        }
-    }, [selectedSiteId])
-
     const loadSiteData = useCallback(() => {
         if (!selectedSiteId) return
         const comps = getCompetitorsForSite(selectedSiteId)
@@ -307,12 +299,11 @@ export default function RankingsPage() {
 
     useEffect(() => {
         setMounted(true)
-        load()
-    }, [load])
+    }, [])
 
     useEffect(() => {
-        loadSiteData()
-    }, [loadSiteData])
+        if (selectedSiteId) loadSiteData()
+    }, [loadSiteData, selectedSiteId])
 
     // Get your site's category scores from latest audit
     const siteCategories = useMemo(() => {

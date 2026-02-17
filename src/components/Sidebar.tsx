@@ -37,6 +37,7 @@ import {
 import { getSites, getAudits, getSettings, TIER_LIMITS } from "@/lib/local-storage"
 import type { UserTier } from "@/lib/local-storage"
 import { NotificationBell } from "@/components/NotificationPanel"
+import { useActiveSite } from "@/context/ActiveSiteContext"
 
 interface NavItem {
   href: string
@@ -132,6 +133,9 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const [sitesCount, setSitesCount] = useState(0)
   const [auditsCount, setAuditsCount] = useState(0)
   const [mounted, setMounted] = useState(false)
+  const [siteSwitcherOpen, setSiteSwitcherOpen] = useState(false)
+
+  const { activeSite, activeSiteId, sites: ctxSites, setActiveSiteId } = useActiveSite()
 
   const load = useCallback(() => {
     setSettings(getSettings())
@@ -248,6 +252,63 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
           <ChevronDown className="h-3.5 w-3.5 text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70 transition-colors shrink-0" />
         </button>
       </div>
+
+      {/* Active Site Switcher */}
+      {mounted && ctxSites.length > 0 && (
+        <div className="px-4 mb-4">
+          <div className="relative">
+            <button
+              onClick={() => setSiteSwitcherOpen(!siteSwitcherOpen)}
+              className="w-full flex items-center justify-between p-2.5 rounded-lg border border-sidebar-border/50 hover:bg-sidebar-accent/30 transition-colors text-left group"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-sidebar-foreground truncate">
+                    {activeSite?.name || activeSite?.domain || "Select site"}
+                  </p>
+                  {activeSite?.domain && (
+                    <p className="text-[10px] text-sidebar-foreground/40 truncate">{activeSite.domain}</p>
+                  )}
+                </div>
+              </div>
+              <ChevronDown className={`h-3 w-3 text-sidebar-foreground/40 transition-transform ${siteSwitcherOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {siteSwitcherOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-sidebar rounded-lg border border-sidebar-border shadow-lg max-h-48 overflow-y-auto">
+                {ctxSites.map((site) => (
+                  <button
+                    key={site.id}
+                    onClick={() => {
+                      setActiveSiteId(site.id)
+                      setSiteSwitcherOpen(false)
+                    }}
+                    className={`w-full flex items-center gap-2 p-2.5 text-left transition-colors hover:bg-sidebar-accent/50 ${site.id === activeSiteId ? "bg-sidebar-accent/30" : ""
+                      }`}
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${site.id === activeSiteId ? "bg-green-500" : "bg-sidebar-foreground/20"
+                      }`} />
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-medium text-sidebar-foreground truncate">
+                        {site.name || site.domain}
+                      </p>
+                      <p className="text-[10px] text-sidebar-foreground/40 truncate">{site.domain}</p>
+                    </div>
+                  </button>
+                ))}
+                <Link
+                  href="/sites"
+                  onClick={() => { setSiteSwitcherOpen(false); onNavClick?.() }}
+                  className="flex items-center gap-2 p-2.5 text-[11px] font-medium text-orange-500 hover:bg-sidebar-accent/30 transition-colors border-t border-sidebar-border/50"
+                >
+                  <Globe className="h-3 w-3" /> Manage Sites →
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 px-4 space-y-1 overflow-y-auto" aria-label="Main navigation">

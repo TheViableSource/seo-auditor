@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useActiveSite } from "@/context/ActiveSiteContext"
 import Link from "next/link"
 import {
     FileText,
@@ -87,8 +88,7 @@ function scoreBgClass(score: number): string {
 // ============================================================
 export default function ReportsPage() {
     const toast = useToast()
-    const [sites, setSites] = useState<StoredSite[]>([])
-    const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null)
+    const { activeSiteId: selectedSiteId, setActiveSiteId: setSelectedSiteId, sites, ready: sitesReady } = useActiveSite()
     const [audit, setAudit] = useState<StoredAudit | null>(null)
     const [previousAudit, setPreviousAudit] = useState<StoredAudit | null>(null)
     const [settings, setSettings] = useState<StoredSettings | null>(null)
@@ -100,19 +100,10 @@ export default function ReportsPage() {
     const [emailSent, setEmailSent] = useState(false)
     const reportRef = useRef<HTMLDivElement>(null)
 
-    const load = useCallback(() => {
-        const allSites = getSites()
-        setSites(allSites)
-        setSettings(getSettings())
-        if (allSites.length > 0 && !selectedSiteId) {
-            setSelectedSiteId(allSites[0].id)
-        }
-    }, [selectedSiteId])
-
     useEffect(() => {
-        load()
+        setSettings(getSettings())
         setMounted(true)
-    }, [load])
+    }, [])
 
     useEffect(() => {
         if (!selectedSiteId) return
